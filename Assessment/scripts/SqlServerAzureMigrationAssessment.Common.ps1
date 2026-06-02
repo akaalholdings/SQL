@@ -196,7 +196,7 @@ function Test-ObjectBool {
 
 function Add-UniqueText {
     param(
-        [System.Collections.Generic.List[string]]$List,
+        [object]$List,
         [string]$Value
     )
 
@@ -208,7 +208,7 @@ function Add-UniqueText {
 
 function Join-AssessmentList {
     param(
-        [System.Collections.Generic.List[string]]$Values,
+        [object]$Values,
         [string]$Default = 'None'
     )
 

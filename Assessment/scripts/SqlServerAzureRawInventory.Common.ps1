@@ -364,6 +364,24 @@ function New-RawCollectionErrorRow {
     }
 }
 
+function New-RawCollectionErrorList {
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    $rows.Add([PSCustomObject]@{
+        sql_instance        = ''
+        collector_name      = '__collector_state__'
+        database_name       = ''
+        error_message       = ''
+        collection_time_utc = ''
+    }) | Out-Null
+    return $rows
+}
+
+function Get-VisibleRawCollectionErrorRows {
+    param([object[]]$Rows = @())
+
+    return @($Rows | Where-Object { (Get-ObjectText $_ 'collector_name') -ne '__collector_state__' })
+}
+
 function Add-RawCollectionError {
     param(
         [object]$ErrorRows,
@@ -413,7 +431,7 @@ function Invoke-RawInventoryQuery {
 
 function Export-RawInventoryCsv {
     param(
-        [object[]]$Rows,
+        [object]$Rows = @(),
         [Parameter(Mandatory = $true)][string[]]$Columns,
         [Parameter(Mandatory = $true)][string]$OutputPath
     )
@@ -1668,6 +1686,18 @@ function New-TargetSignalRows {
     )
 
     $signals = New-Object 'System.Collections.Generic.List[object]'
+    $signals.Add([PSCustomObject]@{
+        sql_instance        = ''
+        database_name       = ''
+        signal_scope        = '__collector_state__'
+        signal_name         = '__collector_state__'
+        detected            = 'false'
+        signal_value        = ''
+        azure_sql_db_impact = ''
+        azure_sql_mi_impact = ''
+        sql_vm_impact       = ''
+        evidence_source     = ''
+    }) | Out-Null
     $server = if (@($ServerPropertiesRows).Count -gt 0) { @($ServerPropertiesRows)[0] } else { $null }
     $sqlInstance = Get-ObjectText $server 'sql_instance'
     if (Is-EmptyText $sqlInstance -and @($ServerConfigurationRows).Count -gt 0) {
@@ -1816,7 +1846,7 @@ function New-TargetSignalRows {
             -EvidenceSource 'sql_agent_job_steps.csv'
     }
 
-    return @($signals)
+    return @($signals | Where-Object { (Get-ObjectText $_ 'signal_scope') -ne '__collector_state__' })
 }
 
 function New-CodexEvidencePackMarkdown {
@@ -1967,7 +1997,7 @@ function Invoke-SqlServerAzureRawInventory {
             -Encrypt $Encrypt `
             -TrustServerCertificate $TrustServerCertificate
 
-        $errorRows = New-Object 'System.Collections.Generic.List[object]'
+        $errorRows = New-RawCollectionErrorList
 
         $serverPropertiesRows = @(Get-RawServerPropertiesRows -ConnectionString $connectionString -SqlInstance $targetInstance -ErrorRows $errorRows)
         $serverConfigurationRows = @(Get-RawServerConfigurationsRows -ConnectionString $connectionString -SqlInstance $targetInstance -ErrorRows $errorRows)
@@ -1991,6 +2021,8 @@ function Invoke-SqlServerAzureRawInventory {
             -EnableWorkloadSampling:$EnableWorkloadSampling.IsPresent `
             -SampleIntervalSeconds $SampleIntervalSeconds `
             -SampleDurationSeconds $SampleDurationSeconds)
+
+        $visibleErrorRows = @(Get-VisibleRawCollectionErrorRows -Rows @($errorRows))
 
         $targetSignalRows = @(New-TargetSignalRows `
             -ServerPropertiesRows $serverPropertiesRows `
@@ -2020,7 +2052,7 @@ function Invoke-SqlServerAzureRawInventory {
             'wait_stats_snapshot.csv'  = $waitStatsRows
             'io_file_stats_snapshot.csv' = $ioFileStatsRows
             'target_signal_matrix.csv' = $targetSignalRows
-            'collection_errors.csv'    = @($errorRows)
+            'collection_errors.csv'    = $visibleErrorRows
         }
 
         $outputFiles = New-Object 'System.Collections.Generic.List[string]'
@@ -2051,7 +2083,7 @@ function Invoke-SqlServerAzureRawInventory {
             -WorkloadSamplingEnabled $EnableWorkloadSampling.IsPresent `
             -SampleIntervalSeconds $SampleIntervalSeconds `
             -SampleDurationSeconds $SampleDurationSeconds `
-            -CollectionErrorCount @($errorRows).Count
+            -CollectionErrorCount @($visibleErrorRows).Count
         $outputFiles.Add('assessment_manifest.json') | Out-Null
 
         $evidencePack = New-CodexEvidencePackMarkdown `
@@ -2060,7 +2092,7 @@ function Invoke-SqlServerAzureRawInventory {
             -ServerPropertiesRows $serverPropertiesRows `
             -DatabaseRows $databaseRows `
             -TargetSignalRows $targetSignalRows `
-            -CollectionErrorRows @($errorRows) `
+            -CollectionErrorRows $visibleErrorRows `
             -OutputFiles @(@($outputFiles) + @('codex_evidence_pack.md')) `
             -WorkloadSamplingEnabled $EnableWorkloadSampling.IsPresent
         Set-Content -LiteralPath (Join-Path $runOutputRoot 'codex_evidence_pack.md') -Value $evidencePack -Encoding UTF8
@@ -2072,7 +2104,7 @@ function Invoke-SqlServerAzureRawInventory {
             output_root            = $runOutputRoot
             database_count         = @($databaseRows).Count
             detected_signal_count  = @($targetSignalRows | Where-Object { (Get-ObjectText $_ 'detected') -eq 'true' }).Count
-            collection_error_count = @($errorRows).Count
+            collection_error_count = @($visibleErrorRows).Count
         }) | Out-Null
 
         Write-Host "Raw migration inventory complete for $targetInstance. Output root: $runOutputRoot"
