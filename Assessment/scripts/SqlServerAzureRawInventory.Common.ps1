@@ -366,7 +366,7 @@ function New-RawCollectionErrorRow {
 
 function Add-RawCollectionError {
     param(
-        [System.Collections.Generic.List[object]]$ErrorRows,
+        [object]$ErrorRows,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
         [Parameter(Mandatory = $true)][string]$CollectorName,
         [string]$DatabaseName = '',
@@ -386,7 +386,7 @@ function Invoke-RawInventoryQuery {
         [Parameter(Mandatory = $true)][string]$Query,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
         [Parameter(Mandatory = $true)][string]$CollectorName,
-        [System.Collections.Generic.List[object]]$ErrorRows,
+        [object]$ErrorRows,
         [string]$Database = 'master',
         [string]$DatabaseNameForError = '',
         [int]$CommandTimeoutSeconds = 120
@@ -491,7 +491,7 @@ function Resolve-RawInventoryTargets {
 
 function Get-RawDatabaseNames {
     param(
-        [Parameter(Mandatory = $true)][object[]]$DatabaseRows,
+        [object[]]$DatabaseRows,
         [bool]$OnlineOnly = $true
     )
 
@@ -511,7 +511,7 @@ function Get-RawServerPropertiesRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows
+        [object]$ErrorRows
     )
 
     $collectionTime = Get-RawInventoryUtcNow
@@ -573,7 +573,7 @@ function Get-RawServerConfigurationsRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows
+        [object]$ErrorRows
     )
 
     $query = @"
@@ -613,7 +613,7 @@ function Get-RawDatabasesRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
+        [object]$ErrorRows,
         [string]$DatabaseName = ''
     )
 
@@ -684,7 +684,7 @@ function Get-RawDatabaseFilesRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
+        [object]$ErrorRows,
         [string]$DatabaseName = ''
     )
 
@@ -820,7 +820,7 @@ function Get-RawDatabaseFeaturesRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
+        [object]$ErrorRows,
         [string]$DatabaseName = ''
     )
 
@@ -859,8 +859,8 @@ function Get-RawObjectFeatureScanRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
-        [Parameter(Mandatory = $true)][object[]]$DatabaseRows
+        [object]$ErrorRows,
+        [object[]]$DatabaseRows
     )
 
     $outRows = New-Object 'System.Collections.Generic.List[object]'
@@ -946,8 +946,8 @@ function Get-RawDatabaseDependencyRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
-        [Parameter(Mandatory = $true)][object[]]$DatabaseRows
+        [object]$ErrorRows,
+        [object[]]$DatabaseRows
     )
 
     $outRows = New-Object 'System.Collections.Generic.List[object]'
@@ -1018,7 +1018,7 @@ function Get-RawSqlAgentJobsRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows
+        [object]$ErrorRows
     )
 
     $query = @"
@@ -1076,7 +1076,7 @@ function Get-RawSqlAgentJobStepsRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows
+        [object]$ErrorRows
     )
 
     $query = @"
@@ -1129,7 +1129,7 @@ function Get-RawLinkedServersRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows
+        [object]$ErrorRows
     )
 
     $query = @"
@@ -1176,7 +1176,7 @@ function Get-RawHaDrTopologyRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows
+        [object]$ErrorRows
     )
 
     try {
@@ -1210,8 +1210,8 @@ function Get-RawSecurityPrincipalsRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
-        [Parameter(Mandatory = $true)][object[]]$DatabaseRows
+        [object]$ErrorRows,
+        [object[]]$DatabaseRows
     )
 
     $outRows = New-Object 'System.Collections.Generic.List[object]'
@@ -1315,8 +1315,8 @@ function Get-RawQueryStoreSummaryRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
-        [Parameter(Mandatory = $true)][object[]]$DatabaseRows
+        [object]$ErrorRows,
+        [object[]]$DatabaseRows
     )
 
     $outRows = New-Object 'System.Collections.Generic.List[object]'
@@ -1395,7 +1395,7 @@ function Get-RawWaitStatsSnapshotRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows
+        [object]$ErrorRows
     )
 
     $sampleTime = Get-RawInventoryUtcNow
@@ -1466,7 +1466,7 @@ function Get-RawIoFileStatsSnapshotRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
+        [object]$ErrorRows,
         [string]$DatabaseName = ''
     )
 
@@ -1531,7 +1531,7 @@ function Get-RawWorkloadSampleRows {
     param(
         [Parameter(Mandatory = $true)][string]$ConnectionString,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
-        [System.Collections.Generic.List[object]]$ErrorRows,
+        [object]$ErrorRows,
         [switch]$EnableWorkloadSampling,
         [int]$SampleIntervalSeconds = 60,
         [int]$SampleDurationSeconds = 0
@@ -1605,7 +1605,7 @@ FROM sys.dm_io_virtual_file_stats(NULL, NULL);
 
 function Add-RawTargetSignal {
     param(
-        [System.Collections.Generic.List[object]]$Rows,
+        [object]$Rows,
         [Parameter(Mandatory = $true)][string]$SqlInstance,
         [string]$DatabaseName = '',
         [Parameter(Mandatory = $true)][string]$SignalScope,
@@ -1893,7 +1893,7 @@ function Export-RawInventoryManifest {
         [string]$DatabaseName = '',
         [Parameter(Mandatory = $true)][string]$StartedUtc,
         [Parameter(Mandatory = $true)][string]$CompletedUtc,
-        [Parameter(Mandatory = $true)][string[]]$OutputFiles,
+        [string[]]$OutputFiles,
         [bool]$WorkloadSamplingEnabled = $false,
         [int]$SampleIntervalSeconds = 0,
         [int]$SampleDurationSeconds = 0,
