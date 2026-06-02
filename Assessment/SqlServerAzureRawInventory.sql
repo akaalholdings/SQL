@@ -209,11 +209,13 @@ ORDER BY DB_NAME(drs.database_id), ar.replica_server_name;
 
 SELECT
     'log_shipping' AS result_set,
-    primary_database AS database_name,
-    secondary_server,
-    secondary_database
-FROM msdb.dbo.log_shipping_primary_secondaries
-ORDER BY primary_database, secondary_server;
+    pd.primary_database AS database_name,
+    ps.secondary_server,
+    ps.secondary_database
+FROM msdb.dbo.log_shipping_primary_secondaries AS ps
+JOIN msdb.dbo.log_shipping_primary_databases AS pd
+    ON ps.primary_id = pd.primary_id
+ORDER BY pd.primary_database, ps.secondary_server;
 
 SELECT
     'database_mirroring' AS result_set,
