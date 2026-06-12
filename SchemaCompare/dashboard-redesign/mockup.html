@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard redesign mockup — Azure SQL Migration Manager</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.1/dist/tabler-icons.min.css" />
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+    :root {
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      color: #0f172a;
+      --panel: #ffffff;
+      --panel-alt: #f4f8ff;
+      --ink: #0f172a;
+      --muted: #5b6b82;
+      --accent: #2d7ff9;
+      --accent-dark: #1f4fd6;
+      --danger: #d9480f;
+      --warn: #f59f00;
+      --ok: #2f9e44;
+      --border: #d4e2ff;
+      --info: #1c7ed6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #dff1ff 0%, #f6f8fb 45%, #ffffff 100%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2rem 2rem;
+      background: rgba(255, 255, 255, 0.85);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand { display: flex; gap: 0.8rem; align-items: center; }
+
+    .logo {
+      width: 42px; height: 42px; border-radius: 14px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #1a73e8, #63b3ed);
+      color: white; font-weight: 700;
+    }
+
+    .title { font-size: 1.1rem; font-weight: 600; }
+    .subtitle { font-size: 0.85rem; color: var(--muted); }
+
+    .nav { display: flex; gap: 0.6rem; }
+    .nav a { padding: 0.4rem 0.8rem; border-radius: 999px; color: var(--muted); font-weight: 500; }
+    .nav a.active { background: var(--panel-alt); color: var(--ink); }
+
+    .user { display: flex; gap: 0.75rem; align-items: center; color: var(--muted); font-size: 0.9rem; }
+
+    main { padding: 2rem; max-width: 1180px; margin: 0 auto; }
+
+    .page-header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 1rem; margin-bottom: 1.4rem;
+    }
+    .page-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+    .page-header p { margin: 0; color: var(--muted); }
+    .refreshed { font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+
+    section { margin-bottom: 2rem; }
+    .section-title { font-size: 1.05rem; font-weight: 600; margin: 0 0 0.8rem; }
+
+    /* ---- Summary strip ---- */
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 0.9rem;
+    }
+    .summary-tile {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    }
+    .summary-tile .label { font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+    .summary-tile .value { font-size: 1.6rem; font-weight: 700; margin-top: 0.3rem; }
+    .summary-tile.alert {
+      background: rgba(217, 72, 15, 0.06);
+      border-color: rgba(217, 72, 15, 0.35);
+    }
+    .summary-tile.alert .label, .summary-tile.alert .value { color: var(--danger); }
+
+    /* ---- Tool cards ---- */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.9rem;
+    }
+    .tool-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.1rem 1.2rem;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+      display: flex; flex-direction: column; gap: 0.45rem;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .tool-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .tool-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      display: grid; place-items: center; font-size: 1.2rem;
+    }
+    .tool-icon.blue   { background: rgba(45, 127, 249, 0.12); color: var(--accent-dark); }
+    .tool-icon.green  { background: rgba(47, 158, 68, 0.12); color: var(--ok); }
+    .tool-icon.purple { background: rgba(112, 72, 232, 0.12); color: #7048e8; }
+    .tool-icon.amber  { background: rgba(245, 159, 0, 0.14); color: #b07703; }
+    .tool-icon.pink   { background: rgba(214, 51, 132, 0.1); color: #c2255c; }
+    .tool-card h3 { margin: 0.2rem 0 0; font-size: 1rem; }
+    .tool-card p { margin: 0; font-size: 0.83rem; color: var(--muted); line-height: 1.4; }
+    .tool-card .go { margin-top: auto; font-size: 0.8rem; color: var(--accent-dark); font-weight: 600; display: flex; align-items: center; gap: 0.25rem; }
+
+    /* ---- Two-column lower area ---- */
+    .lower-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 1.2rem;
+      align-items: start;
+    }
+
+    .panel-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 0.4rem 1.1rem;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .env-row {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.8rem; padding: 0.75rem 0;
+      border-bottom: 1px dashed var(--border);
+      cursor: pointer;
+    }
+    .env-row:last-child { border-bottom: none; }
+    .env-row:hover .env-name { color: var(--accent-dark); }
+    .env-name { font-weight: 600; font-size: 0.95rem; }
+    .env-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
+    .env-meta .mono { font-family: "JetBrains Mono", monospace; font-size: 0.75rem; }
+
+    .badge {
+      padding: 0.22rem 0.65rem; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 600; white-space: nowrap;
+    }
+    .badge.ok     { background: rgba(47, 158, 68, 0.1);  color: var(--ok); }
+    .badge.warn   { background: rgba(245, 159, 0, 0.12); color: var(--warn); }
+    .badge.danger { background: rgba(217, 72, 15, 0.12); color: var(--danger); }
+
+    .guide-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.65rem 0; border-bottom: 1px dashed var(--border);
+      font-size: 0.88rem; cursor: pointer;
+    }
+    .guide-row:last-child { border-bottom: none; }
+    .guide-row:hover { color: var(--accent-dark); }
+    .guide-row i { color: var(--muted); font-size: 1rem; }
+
+    .run-row {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.8rem; padding: 0.6rem 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 0.85rem;
+    }
+    .run-row:last-child { border-bottom: none; }
+    .run-action { font-weight: 600; }
+    .run-meta { color: var(--muted); font-size: 0.78rem; }
+
+    .side-stack { display: flex; flex-direction: column; gap: 1.2rem; }
+
+    @media (max-width: 880px) {
+      .topbar { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+      main { padding: 1.2rem; }
+      .lower-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">⇧</div>
+      <div>
+        <div class="title">Azure SQL Migration Manager</div>
+        <div class="subtitle">Flyway-style migrations for Azure SQL</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="#" class="active">Dashboard</a>
+      <a href="#">Schema Compare</a>
+      <a href="#">Data Validator</a>
+      <a href="#">Plan Explorer</a>
+      <a href="#">Runs</a>
+    </nav>
+    <div class="user"><span>info@thirteendigital.co.uk</span></div>
+  </header>
+
+  <main>
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p>Migration health, tools, and guides for your Azure SQL environments.</p>
+      </div>
+      <div class="refreshed"><i class="ti ti-refresh"></i> Refreshed 2 min ago</div>
+    </div>
+
+    <!-- 1. Summary strip -->
+    <section>
+      <div class="summary-strip">
+        <div class="summary-tile">
+          <div class="label"><i class="ti ti-server"></i> Environments</div>
+          <div class="value">4</div>
+        </div>
+        <div class="summary-tile">
+          <div class="label"><i class="ti ti-clock"></i> Pending migrations</div>
+          <div class="value">3</div>
+        </div>
+        <div class="summary-tile alert">
+          <div class="label"><i class="ti ti-alert-triangle"></i> Drift detected</div>
+          <div class="value">1</div>
+        </div>
+        <div class="summary-tile">
+          <div class="label"><i class="ti ti-circle-check"></i> Last run</div>
+          <div class="value">Passed</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Tool launcher cards -->
+    <section>
+      <h2 class="section-title">Tools</h2>
+      <div class="tools-grid">
+        <a href="#" class="tool-card">
+          <div class="tool-icon blue"><i class="ti ti-git-compare"></i></div>
+          <h3>Schema Compare</h3>
+          <p>Diff two environments and generate sync scripts for tables, indexes, and constraints.</p>
+          <span class="go">Open <i class="ti ti-arrow-right"></i></span>
+        </a>
+        <a href="#" class="tool-card">
+          <div class="tool-icon green"><i class="ti ti-checklist"></i></div>
+          <h3>Data Validator</h3>
+          <p>Compare row counts between environments to spot missing or mismatched data.</p>
+          <span class="go">Open <i class="ti ti-arrow-right"></i></span>
+        </a>
+        <a href="#" class="tool-card">
+          <div class="tool-icon purple"><i class="ti ti-binary-tree"></i></div>
+          <h3>Plan Explorer</h3>
+          <p>Visualise execution plans and get AI-assisted tuning recommendations.</p>
+          <span class="go">Open <i class="ti ti-arrow-right"></i></span>
+        </a>
+        <a href="#" class="tool-card">
+          <div class="tool-icon amber"><i class="ti ti-history"></i></div>
+          <h3>Migration Runs</h3>
+          <p>Auditable history of validate and migrate operations across environments.</p>
+          <span class="go">Open <i class="ti ti-arrow-right"></i></span>
+        </a>
+        <a href="#" class="tool-card">
+          <div class="tool-icon pink"><i class="ti ti-folder-code"></i></div>
+          <h3>Script Repository</h3>
+          <p>Browse migration scripts and diff versions side by side.</p>
+          <span class="go">Open <i class="ti ti-arrow-right"></i></span>
+        </a>
+      </div>
+    </section>
+
+    <!-- 3. Environments + 4. Guides / 5. Recent activity -->
+    <div class="lower-grid">
+      <section>
+        <h2 class="section-title">Environments</h2>
+        <div class="panel-card">
+          <div class="env-row">
+            <div>
+              <div class="env-name">Development</div>
+              <div class="env-meta"><span class="mono">V012</span> · sql-dev.database.windows.net/appdb · 0 pending</div>
+            </div>
+            <span class="badge ok">Up to date</span>
+          </div>
+          <div class="env-row">
+            <div>
+              <div class="env-name">Test</div>
+              <div class="env-meta"><span class="mono">V011</span> · sql-test.database.windows.net/appdb · 1 pending</div>
+            </div>
+            <span class="badge warn">Pending</span>
+          </div>
+          <div class="env-row">
+            <div>
+              <div class="env-name">Staging</div>
+              <div class="env-meta"><span class="mono">V010</span> · sql-stg.database.windows.net/appdb · 2 pending</div>
+            </div>
+            <span class="badge danger">Drift detected</span>
+          </div>
+          <div class="env-row">
+            <div>
+              <div class="env-name">Production</div>
+              <div class="env-meta"><span class="mono">V012</span> · sql-prod.database.windows.net/appdb · 0 pending</div>
+            </div>
+            <span class="badge ok">Up to date</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="side-stack">
+        <section>
+          <h2 class="section-title">Guides</h2>
+          <div class="panel-card">
+            <div class="guide-row"><i class="ti ti-book"></i> Getting started with migrations</div>
+            <div class="guide-row"><i class="ti ti-book"></i> Resolving schema drift</div>
+            <div class="guide-row"><i class="ti ti-book"></i> Reading a query plan</div>
+            <div class="guide-row"><i class="ti ti-book"></i> Safe deploys to production</div>
+            <div class="guide-row"><i class="ti ti-book"></i> Writing versioned vs repeatable scripts</div>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="section-title">Recent activity</h2>
+          <div class="panel-card">
+            <div class="run-row">
+              <div>
+                <div class="run-action">Migrate · Test</div>
+                <div class="run-meta">V011 applied · 2 hours ago</div>
+              </div>
+              <span class="badge ok">Passed</span>
+            </div>
+            <div class="run-row">
+              <div>
+                <div class="run-action">Validate · Staging</div>
+                <div class="run-meta">Checksum mismatch · 5 hours ago</div>
+              </div>
+              <span class="badge danger">Failed</span>
+            </div>
+            <div class="run-row">
+              <div>
+                <div class="run-action">Migrate · Development</div>
+                <div class="run-meta">V012 applied · yesterday</div>
+              </div>
+              <span class="badge ok">Passed</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
