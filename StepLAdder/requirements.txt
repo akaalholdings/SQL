@@ -1,0 +1,7 @@
+azure-functions>=1.21.0
+azure-identity>=1.17.1
+azure-mgmt-sql>=3.0.1
+azure-data-tables>=12.6.0
+azure-storage-blob>=12.23.0
+pyodbc>=5.1.0
+six>=1.16.0

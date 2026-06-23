@@ -1,0 +1,13 @@
+.git*
+.vscode/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+tests/
+scripts/
+README.md
+pytest.ini
+requirements-dev.txt
+sqlautoscaler.zip
