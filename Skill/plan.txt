@@ -1,0 +1,392 @@
+Absolutely — here’s a consolidated plan written as a single workflow that explicitly routes the work through the **SQL Optimizer skill**, instead of breaking it into phases.
+
+---
+
+# SQL Optimizer Plan — OOW View Runtime and Index Optimization
+
+Use the **SQL Optimizer skill** to evaluate, test, and optimize workloads using:
+
+```sql
+[cns_cpo_mid_capacity].[OOW_VIEW]
+```
+
+The goal is to baseline the current workload, optimize the view logic, optionally introduce test indexes, and compare performance across three scenarios:
+
+1. **Current workloads**
+2. **Workloads using optimized test view**
+3. **Workloads using optimized test view plus new test indexes**
+
+The optimized test view should be deployed using the prefix:
+
+```sql
+_Testing_BS
+```
+
+Suggested test view name:
+
+```sql
+[cns_cpo_mid_capacity].[_Testing_BS_OOW_VIEW]
+```
+
+---
+
+## Consolidated SQL Optimizer Workflow
+
+1. **Use `query_geneva_db` to connect to production and inspect the current view**
+
+   Retrieve the current definition of:
+
+   ```sql
+   [cns_cpo_mid_capacity].[OOW_VIEW]
+   ```
+
+   Capture the full view SQL, dependencies, underlying tables, joins, filters, computed columns, data conversions, and any logic that could affect predicate pushdown.
+
+   Pay specific attention to how these columns are produced:
+
+   ```sql
+   OOW_DATE
+   MaterialGroup
+   VolumeBBL
+   ```
+
+2. **Parse the supplied workload queries through SQL Optimizer**
+
+   Evaluate all five workload queries for runtime, plan shape, reads, CPU, aggregation strategy, sorting, filtering, and index usage.
+
+   The workload queries are:
+
+   ```sql
+   select OOW_DATE, sum(VolumeBBL) as OOW_QTY_BBL
+   from [cns_cpo_mid_capacity].[OOW_VIEW]
+   where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+   group by OOW_DATE
+   order by OOW_DATE;
+   ```
+
+   ```sql
+   select OOW_DATE, MaterialGroup, sum(VolumeBBL) as OOW_QTY_BBL
+   from [cns_cpo_mid_capacity].[OOW_VIEW]
+   where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+   group by OOW_DATE, MaterialGroup
+   order by OOW_DATE, MaterialGroup;
+   ```
+
+   ```sql
+   select top(100) *
+   from [cns_cpo_mid_capacity].[OOW_VIEW]
+   where OOW_DATE > DATEADD(MONTH, -12, GETDATE());
+   ```
+
+   ```sql
+   select OOW_DATE, MaterialGroup, sum(VolumeBBL) as OOW_QTY_BBL
+   from [cns_cpo_mid_capacity].[OOW_VIEW]
+   where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+     and MaterialGroup = 'Crude/Condensate'
+   group by MaterialGroup, OOW_DATE
+   order by OOW_DATE;
+   ```
+
+   ```sql
+   select OOW_DATE, sum(VolumeBBL) as OOW_QTY_BBL
+   from [cns_cpo_mid_capacity].[OOW_VIEW]
+   where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+     and MaterialGroup = 'Crude/Condensate'
+   group by OOW_DATE
+   order by OOW_DATE;
+   ```
+
+3. **Capture production baselines for the current workloads**
+
+   For each query, capture:
+
+   - Duration
+   - CPU time
+   - Logical reads
+   - Physical reads
+   - Row count
+   - Actual XML execution plan
+   - Query hash
+   - Plan hash
+   - Memory grant
+   - Spills
+   - Warnings
+   - Missing index recommendations
+   - Whether predicates are pushed down to the base tables
+
+   Use production only for read-only baseline testing unless otherwise approved.
+
+4. **Analyze the current execution plans and view structure**
+
+   SQL Optimizer should review whether the current plans show:
+
+   - Table scans or large index scans
+   - Poor predicate pushdown on `OOW_DATE`
+   - Poor predicate pushdown on `MaterialGroup`
+   - Implicit conversions
+   - Expensive joins before filtering
+   - Expensive sorts for `ORDER BY`
+   - Hash aggregates where stream aggregates may be possible
+   - Cardinality estimate issues
+   - Stale or missing statistics
+   - Missing or duplicate index opportunities
+   - View logic that prevents sargability
+
+   The main performance pattern to optimize is:
+
+   ```sql
+   where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+   ```
+
+   plus, for two queries:
+
+   ```sql
+   and MaterialGroup = 'Crude/Condensate'
+   ```
+
+5. **Review base table design and existing indexes**
+
+   For each table referenced by the view, inspect:
+
+   - Table row counts
+   - Clustered indexes
+   - Primary keys
+   - Existing nonclustered indexes
+   - Included columns
+   - Column data types
+   - Join column data types
+   - Statistics
+   - Partitioning
+   - Compression
+   - Current index overlap or redundancy
+
+   SQL Optimizer should determine whether the existing indexes support these access patterns:
+
+   ```sql
+   OOW_DATE
+   ```
+
+   ```sql
+   OOW_DATE, MaterialGroup
+   ```
+
+   ```sql
+   MaterialGroup, OOW_DATE
+   ```
+
+   ```sql
+   INCLUDE (VolumeBBL)
+   ```
+
+6. **Create an optimized test view**
+
+   Build a test version of the view as:
+
+   ```sql
+   [cns_cpo_mid_capacity].[_Testing_BS_OOW_VIEW]
+   ```
+
+   The optimized view should preserve the required business logic while improving the ability of SQL Server to filter and aggregate efficiently.
+
+   The SQL Optimizer review should attempt to:
+
+   - Keep `OOW_DATE` sargable
+   - Keep `MaterialGroup` sargable
+   - Avoid unnecessary `CAST`, `CONVERT`, `ISNULL`, `COALESCE`, or `CASE` logic around filter columns
+   - Avoid unnecessary `SELECT *`
+   - Remove unnecessary `DISTINCT`, if safe
+   - Remove unnecessary ordering inside the view, if present
+   - Push filters and joins into a more efficient order, where logically equivalent
+   - Preserve result compatibility with the existing view
+   - Avoid changing column names or data types unless explicitly required
+
+7. **Run the three required test sets**
+
+   Execute all five workload queries under each scenario.
+
+   ### Test Set 1 — Current workloads
+
+   Target:
+
+   ```sql
+   [cns_cpo_mid_capacity].[OOW_VIEW]
+   ```
+
+   Purpose:
+
+   Establish the production baseline.
+
+   ---
+
+   ### Test Set 2 — Workloads with optimized view
+
+   Target:
+
+   ```sql
+   [cns_cpo_mid_capacity].[_Testing_BS_OOW_VIEW]
+   ```
+
+   Purpose:
+
+   Measure the benefit of the optimized view only, before introducing indexes.
+
+   ---
+
+   ### Test Set 3 — Workloads with optimized view and test indexes
+
+   Target:
+
+   ```sql
+   [cns_cpo_mid_capacity].[_Testing_BS_OOW_VIEW]
+   ```
+
+   plus any approved `_Testing_BS` indexes.
+
+   Purpose:
+
+   Measure the combined benefit of the optimized view and targeted indexing.
+
+8. **Introduce test indexes only where plan evidence supports them**
+
+   If SQL Optimizer identifies missing or weak index coverage, create test indexes using a clear testing prefix:
+
+   ```sql
+   IX_Testing_BS_<TableName>_<Columns>
+   ```
+
+   Candidate index shapes to evaluate may include:
+
+   ```sql
+   (OOW_DATE) INCLUDE (VolumeBBL)
+   ```
+
+   ```sql
+   (OOW_DATE, MaterialGroup) INCLUDE (VolumeBBL)
+   ```
+
+   ```sql
+   (MaterialGroup, OOW_DATE) INCLUDE (VolumeBBL)
+   ```
+
+   For the filtered crude workload, also consider a filtered index if selectivity supports it:
+
+   ```sql
+   (OOW_DATE) INCLUDE (VolumeBBL)
+   WHERE MaterialGroup = 'Crude/Condensate'
+   ```
+
+   Final index choices should be based on actual execution plans, row counts, selectivity, existing indexes, and write overhead.
+
+9. **Validate result equivalence between current and optimized view**
+
+   Before recommending the optimized view for production, confirm that results match.
+
+   For aggregate outputs, compare current vs test view in both directions using `EXCEPT`.
+
+   Example:
+
+   ```sql
+   WITH current_result AS (
+       select OOW_DATE, sum(VolumeBBL) as OOW_QTY_BBL
+       from [cns_cpo_mid_capacity].[OOW_VIEW]
+       where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+       group by OOW_DATE
+   ),
+   testing_result AS (
+       select OOW_DATE, sum(VolumeBBL) as OOW_QTY_BBL
+       from [cns_cpo_mid_capacity].[_Testing_BS_OOW_VIEW]
+       where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+       group by OOW_DATE
+   )
+   SELECT *
+   FROM current_result
+   EXCEPT
+   SELECT *
+   FROM testing_result;
+   ```
+
+   Then reverse the comparison:
+
+   ```sql
+   WITH current_result AS (
+       select OOW_DATE, sum(VolumeBBL) as OOW_QTY_BBL
+       from [cns_cpo_mid_capacity].[OOW_VIEW]
+       where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+       group by OOW_DATE
+   ),
+   testing_result AS (
+       select OOW_DATE, sum(VolumeBBL) as OOW_QTY_BBL
+       from [cns_cpo_mid_capacity].[_Testing_BS_OOW_VIEW]
+       where OOW_DATE > DATEADD(MONTH, -12, GETDATE())
+       group by OOW_DATE
+   )
+   SELECT *
+   FROM testing_result
+   EXCEPT
+   SELECT *
+   FROM current_result;
+   ```
+
+   Repeat equivalent checks for the `MaterialGroup` grouped and filtered queries.
+
+10. **Compare all three scenarios in one result matrix**
+
+   Produce a consolidated comparison like this:
+
+   | Query | Scenario | Duration ms | CPU ms | Logical Reads | Physical Reads | Rows | Plan Notes |
+   |---|---:|---:|---:|---:|---:|---:|---|
+   | Q1 | Current view |  |  |  |  |  |  |
+   | Q1 | Optimized view |  |  |  |  |  |  |
+   | Q1 | Optimized view + indexes |  |  |  |  |  |  |
+   | Q2 | Current view |  |  |  |  |  |  |
+   | Q2 | Optimized view |  |  |  |  |  |  |
+   | Q2 | Optimized view + indexes |  |  |  |  |  |  |
+   | Q3 | Current view |  |  |  |  |  |  |
+   | Q3 | Optimized view |  |  |  |  |  |  |
+   | Q3 | Optimized view + indexes |  |  |  |  |  |  |
+   | Q4 | Current view |  |  |  |  |  |  |
+   | Q4 | Optimized view |  |  |  |  |  |  |
+   | Q4 | Optimized view + indexes |  |  |  |  |  |  |
+   | Q5 | Current view |  |  |  |  |  |  |
+   | Q5 | Optimized view |  |  |  |  |  |  |
+   | Q5 | Optimized view + indexes |  |  |  |  |  |  |
+
+11. **Prepare final SQL Optimizer recommendations**
+
+   The final output from SQL Optimizer should include:
+
+   - Current production baseline results
+   - XML execution plans for the baseline queries
+   - Analysis of the current view definition
+   - Base table and index inventory
+   - Optimized `_Testing_BS` view definition
+   - Test results for all three scenarios
+   - Recommended production view change, if beneficial
+   - Recommended production index changes, if beneficial
+   - Indexes that were tested but not recommended
+   - Risks and tradeoffs
+   - Expected write overhead from new indexes
+   - Rollback script
+   - Deployment script
+   - Before/after performance summary
+
+---
+
+## Success Criteria
+
+The SQL Optimizer work is successful if the optimized approach:
+
+- Reduces runtime for the target workload queries
+- Reduces logical reads
+- Improves predicate pushdown on `OOW_DATE` and `MaterialGroup`
+- Reduces unnecessary scans, sorts, or hash operations
+- Preserves result correctness
+- Avoids duplicate or low-value indexes
+- Keeps production deployment risk low
+- Provides clear deployment and rollback scripts
+
+---
+
+## Short Version
+
+Run the supplied queries through the **SQL Optimizer skill** using `query_geneva_db`, capture production baselines and XML plans, inspect the current view and underlying table/index design, create an optimized `_Testing_BS` test view, test the same workloads against the new view, add targeted `_Testing_BS` indexes only where the plans justify them, then compare current vs optimized view vs optimized view plus indexes and produce final deployment recommendations.
