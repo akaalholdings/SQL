@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""Install the sql_optimizer Copilot skill bundle."""
+
+from __future__ import annotations
+
+import pathlib
+import shutil
+import sys
+
+
+SKILL_FILES = (
+    "SKILL.md",
+    "queryguide.md",
+    "SchemaGuide.md",
+    "StyleGuide.md",
+    "RunGuide.md",
+    "Examples.md",
+    "AuditGuide.md",
+    "ImproveGuide.md",
+    "main.txt",
+    "record_audit.py",
+    "validate_audit.py",
+    "summarize_audits.py",
+)
+
+
+def main() -> int:
+    source_dir = pathlib.Path(__file__).parent.resolve()
+    dest_dir = pathlib.Path.home() / ".copilot" / "skills" / "sql_optimizer"
+
+    missing = [name for name in SKILL_FILES if not (source_dir / name).exists()]
+    if missing:
+        print(f"Missing required skill files: {', '.join(missing)}", file=sys.stderr)
+        return 1
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for name in SKILL_FILES:
+        shutil.copy2(source_dir / name, dest_dir / name)
+
+    # Prune stale skill files left by older installs (e.g. removed guides) so the
+    # active skill matches source. Only top-level files are pruned — directories
+    # such as the audit corpus (audits/) and __pycache__ are preserved.
+    keep = set(SKILL_FILES)
+    pruned = []
+    for entry in dest_dir.iterdir():
+        if entry.is_file() and entry.name not in keep:
+            entry.unlink()
+            pruned.append(entry.name)
+
+    print(f"Installed sql_optimizer skill bundle to: {dest_dir}")
+    if pruned:
+        print(f"Pruned stale files: {', '.join(sorted(pruned))}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

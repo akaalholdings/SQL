@@ -1,0 +1,16 @@
+SELECT
+    t.TABLE_NAME AS [Dataset Name],
+    CONCAT(t.TABLE_SCHEMA, '.', t.TABLE_NAME) AS [Technical Name],
+    t.TABLE_TYPE AS [Purpose],
+    c.COLUMN_NAME AS [Column Name],
+    c.DATA_TYPE AS [Description],
+    CAST(NULL AS nvarchar(200)) AS [Ref. Technical Name],
+    CAST(0 AS bit) AS [Filter?]
+FROM INFORMATION_SCHEMA.TABLES AS t
+INNER JOIN INFORMATION_SCHEMA.COLUMNS AS c
+    ON t.TABLE_SCHEMA = c.TABLE_SCHEMA
+    AND t.TABLE_NAME = c.TABLE_NAME
+WHERE t.TABLE_TYPE = 'BASE TABLE'
+ORDER BY
+    t.TABLE_NAME,
+    c.ORDINAL_POSITION;

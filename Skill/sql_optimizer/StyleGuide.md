@@ -26,7 +26,7 @@ This document defines what "clean" T-SQL looks like. Every query returned by thi
 - **Object creation**: Use CREATE OR ALTER instead of DROP/CREATE
 - **Table aliases**: Every table gets an alias, even in single-table queries, always with AS: `FROM dbo.orders AS o`
 - **Column references**: Always qualified with the table alias
-- **Commas**: Trailing commas, always
+- **Commas**: Trailing style — place the comma at the end of each item, after each entry except the last; never a final trailing comma before a closing paren or clause (it is invalid T-SQL in select lists, index column lists, etc.)
 - **Semicolons**: Terminate every statement (after any query hints, at the very end)
 
 ## Comments

@@ -30,7 +30,7 @@ SELECT DISTINCT
     o.OrderDate,
     o.TotalDue,
     c.CustomerName
-FROM Orders AS o
+FROM Orders AS o WITH (NOLOCK)
 JOIN dbo.Customers AS c
   ON c.CustomerID = o.CustomerID
 WHERE o.OrderDate >= '20250101'
@@ -77,7 +77,6 @@ No execution plan or existing index definitions were provided, so this recommend
 **What changed and why**
 
 - `YEAR(o.OrderDate) = 2025` → half-open date range (`>= '20250101' AND < '20260101'`): the function on the column made the predicate non-SARGable, forcing a scan; the range form permits an index seek (queryguide Rule 1). Estimated impact: scan → seek against the recommended index.
-- Removed `WITH (NOLOCK)`: Azure SQL Database uses READ COMMITTED SNAPSHOT by default, so readers don't block writers; the hint adds dirty-read/double-read risk with no benefit (queryguide Rule 4). Verify with: `SELECT is_read_committed_snapshot_on FROM sys.databases WHERE name = DB_NAME();`
 - Reformatted to the styling guide (table aliases with `AS`, qualified columns, `yyyymmdd` date literals, layout). Formatting only — no behavior change.
 
 *Optional changes (not applied — please confirm):*
@@ -93,6 +92,7 @@ No execution plan or existing index definitions were provided, so this recommend
   )
   ```
 - `DISTINCT` removal: if `OrderID` is unique in `Orders` and `CustomerID` is the key of `dbo.Customers`, the join cannot multiply rows and `DISTINCT` is pure cost (a needless distinct sort or hash). Confirm both and it can be dropped.
+- Remove `WITH (NOLOCK)`: Azure SQL Database uses READ COMMITTED SNAPSHOT by default, so readers do not block writers; the hint adds dirty-read/double-read risk. This is a recommended correctness change, not applied in the guaranteed equivalent rewrite because it can change behavior during concurrent writes. Verify with: `SELECT is_read_committed_snapshot_on FROM sys.databases WHERE name = DB_NAME();`
 
 **Azure SQL Database notes**
 
@@ -147,16 +147,16 @@ The user also supplies the actual execution plan XML. The XML shows:
 
 **Environment for validation**
 
-Before direct database validation, choose the Shell environment: `mid` (prod), `mid_preprod` (preprod), `mid_test` (test), `mid_dev` (dev), or `mid_sandbox` (sandbox). If you do not specify one, I will use `mid_dev` and state that assumption.
+Before direct database validation, choose the Shell environment: `mid` (production `mid` on the analytics server, read-only prod replica), `mid_prod` (primary production maintenance only after explicit approval), `mid_preprod` (preprod), `mid_test` (test), `mid_dev` (dev alias targeting database `mid_Dev`), or `mid_sandbox` (sandbox). If you do not specify one, I will use `mid` for read-only evidence gathering and state that assumption.
 
 For direct read-only inspection/validation, use `query_geneva_db` after the environment is chosen:
 
 ```bash
-query_geneva_db mid_dev -f /tmp/shipments_index_inventory.sql --mode sql --preview-rows 500
-query_geneva_db mid_dev -f /tmp/shipments_baseline_sample.sql --mode sql --preview-rows 100
+query_geneva_db mid --dba --index-inventory dbo.Shipments --format json
+query_geneva_db mid --dba --tune-capture --query-file /tmp/shipments_baseline.sql --max-rows 100 --format json
 ```
 
-`query_geneva_db` is only for direct database reads, metadata/index inspection, and validation queries. Do not use it to run the view or index DDL below.
+`query_geneva_db` is for this query's evidence: direct database reads, metadata/index inspection, actual-plan capture, benchmarking, and result-validation queries. Do not use it to run the index DDL below unless the user explicitly approves execution in the chosen writable environment.
 
 **Plan findings**
 
@@ -165,7 +165,7 @@ query_geneva_db mid_dev -f /tmp/shipments_baseline_sample.sql --mode sql --previ
 - The key lookup executes once per qualifying shipment row (`ActualExecutions=184221`), so the index used by the plan is not covering the selected/joined columns.
 - Estimated rows (`42.1`) vs actual rows (`184221`) shows a severe cardinality miss; check parameter sensitivity and statistics on `ShipDate` and `StatusCode`.
 
-**Optimized query or view**
+**Optimized query**
 
 ```sql
 SELECT
@@ -235,44 +235,61 @@ WITH
 
 Justification: supports a seek on the half-open `ShipDate` range, applies the `StatusCode` filter in index order, and covers the selected/joined shipment columns to remove the repeated key lookup. Do not create this if the inventory shows an existing equivalent index that can be amended instead.
 
-**Three test scenarios**
+**Three-scenario results**
 
-1. Baseline test:
-   - Run the original query with representative `@ShipDate`.
-   - Capture actual plan XML, duration, CPU time, logical reads, row count, spills, memory grant, and lookup executions.
-   - Save the baseline result set or exact comparison signature.
+Same `@ShipDate` and parameter values across all three runs. Row count is identical (312) in every scenario — that is the equivalence anchor.
 
-2. Optimized view/query test:
-   - Run the optimized query without new indexes.
-   - Validate exact result equivalence:
-     ```sql
-     WITH original_result AS
-     (
-         /* original query, without ORDER BY */
-     ),
-     optimized_result AS
-     (
-         /* optimized query, without ORDER BY */
-     )
-     SELECT issue = 'original_except_optimized', *
-     FROM original_result
-     EXCEPT
-     SELECT issue = 'original_except_optimized', *
-     FROM optimized_result
-     UNION ALL
-     SELECT issue = 'optimized_except_original', *
-     FROM optimized_result
-     EXCEPT
-     SELECT issue = 'optimized_except_original', *
-     FROM original_result;
-     ```
-   - If duplicates are possible, add duplicate-preserving row numbering over all projected columns before comparing.
+| Scenario | Duration ms | CPU ms | Logical Reads | Physical Reads | Rows | Plan Notes |
+|---|---:|---:|---:|---:|---:|---|
+| Baseline | 1,240 | 1,100 | 82,114 | 90 | 312 | Clustered index scan; non-SARGable `CONVERT`; est 42 vs actual 184,221; key lookup ×184,221 |
+| Optimized | 980 | 870 | 61,030 | 40 | 312 | Range now SARGable; seeks an existing `ShipDate` index but key lookup remains (not covering) |
+| Optimized + indexes | 45 | 30 | 980 | 0 | 312 | Single seek on the test covering index; key lookup gone; est ≈ actual |
 
-3. Optimized view/query + indexes test:
-   - Apply the approved index script only after explicit approval.
-   - Re-run the optimized query and exact comparison.
-   - Confirm the new plan removes the scan/key lookup pattern or explain why it does not.
-   - Compare logical reads, duration, CPU time, spills, and memory grant against baseline.
+How each scenario was run:
+
+1. **Baseline** — read-only on `mid`. Captured the actual plan, duration, CPU, logical reads, row count, spills, memory grant, and lookup executions.
+   ```bash
+   query_geneva_db mid --dba --tune-capture --query-file /tmp/shipments_baseline.sql --max-rows 100 --format json
+   ```
+
+2. **Optimized** — read-only on `mid`, no new indexes. The SARGable range cut reads, but without a covering index the key lookup remains. `--benchmark` fetches both result sets into memory, so `--max-rows` is bounded here; exact equivalence is proven server-side below.
+   ```bash
+   query_geneva_db mid --dba --benchmark --query-file /tmp/shipments_baseline.sql --query-file2 /tmp/shipments_optimized.sql --max-rows 100 --format json
+   ```
+
+3. **Optimized + indexes** — writable env (`mid_dev`) **after explicit DDL approval**. Index DDL goes through the single-statement DBA maintenance path, not `--benchmark` (which only runs read-only `SELECT`s): create the test-prefixed covering index (`IX_Testing_BS_Shipments_ShipDate_StatusCode_a1b2c3d4`), capture the optimized query with it present, then drop it. The plan collapsed to a single seek with no key lookup.
+   ```bash
+   # create (single DDL statement)
+   query_geneva_db mid_dev --dba --query-file /tmp/shipments_create_index.sql --format json
+   # capture the optimized query with the index present
+   query_geneva_db mid_dev --dba --tune-capture --query-file /tmp/shipments_optimized.sql --max-rows 100 --format json
+   # drop (rollback, single DDL statement)
+   query_geneva_db mid_dev --dba --query-file /tmp/shipments_drop_index.sql --format json
+   ```
+
+**Result equivalence** — both `EXCEPT` directions returned zero rows (duplicate-sensitive; add row numbering over all projected columns when duplicates are possible). Drop `ORDER BY` for the set comparison itself.
+
+```sql
+WITH baseline_result AS
+(
+    /* original query, without ORDER BY */
+),
+optimized_result AS
+(
+    /* optimized query, without ORDER BY */
+)
+SELECT issue = 'baseline_except_optimized', *
+FROM baseline_result
+EXCEPT
+SELECT issue = 'baseline_except_optimized', *
+FROM optimized_result
+UNION ALL
+SELECT issue = 'optimized_except_baseline', *
+FROM optimized_result
+EXCEPT
+SELECT issue = 'optimized_except_baseline', *
+FROM baseline_result;
+```
 
 **What changed and why**
 
@@ -286,5 +303,5 @@ Justification: supports a seek on the half-open `ShipDate` range, applies the `S
 
 **Azure SQL Database notes**
 
-- Validate in `mid_dev` by default unless you choose another Shell environment.
+- Validate read-only evidence in `mid` by default unless you choose another Shell environment. Use `mid_dev` as the default writable DDL-test target only after explicit approval.
 - Generated DDL is a script, not an instruction to execute automatically. Apply it only after approval in the chosen environment.

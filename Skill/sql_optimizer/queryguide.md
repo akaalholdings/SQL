@@ -8,7 +8,7 @@ The analysis begins with the execution plan, which is the blueprint created by t
 
 Action: Parse the provided XML execution plan.
 
-For Shell database work, the actual plan XML is expected to be supplied by the user. If direct database validation or metadata lookup is needed, first ask which environment to use: `mid` (prod), `mid_preprod` (preprod), `mid_test` (test), `mid_dev` (dev), or `mid_sandbox` (sandbox). If the user has no preference after being asked, use `mid_dev` and state that assumption. Use `query_geneva_db` only for direct database reads, catalog/index inspection, and validation queries.
+For Shell database work, capture the actual plan for the supplied query with `query_geneva_db`, or accept plan XML the user pastes. Before live access, ask which environment to use: `mid` (production `mid` on the analytics server, read-only prod replica), `mid_prod` (primary production `mid`, DBA maintenance only after explicit approval), `mid_preprod` (preprod), `mid_test` (test), `mid_dev` (dev alias targeting database `mid_Dev`), or `mid_sandbox` (sandbox). If the user has no preference after being asked, use `mid` for read-only evidence gathering and state that assumption. Use `mid_dev` as the default writable validation target only after explicit approval for DDL testing. Use `query_geneva_db` for this query's evidence only: direct database reads, catalog/index inspection, actual-plan capture, benchmarking, and result-validation queries. `RunGuide.md` covers the full three-scenario benchmark run.
 
 Analysis Checklist:
 
@@ -124,7 +124,7 @@ The choice between temporary tables and table variables depends on the database 
 
 Myth Debunked: Both #temptables and @tablevariables are created in tempdb. The idea that table variables are purely in-memory is false.
 
-Azure SQL Database Reality: New databases default to compatibility level 160, and anything at level 150+ uses **table variable deferred compilation** — the optimizer "sniffs" the actual row count on first execution instead of assuming 1 row, producing far better plans. If the user's database may have been created long ago or had its level lowered, verify with: SELECT compatibility_level FROM sys.databases WHERE name = DB_NAME().
+Azure SQL Database Reality: New databases now default to compatibility level 170, and anything at level 150+ uses **table variable deferred compilation** — the optimizer "sniffs" the actual row count on first execution instead of assuming 1 row, producing far better plans. (Parameter-sensitive plan optimization is enabled from level 160+.) If the user's database may have been created long ago or had its level lowered, verify with: SELECT compatibility_level FROM sys.databases WHERE name = DB_NAME().
 
 Below level 150 (legacy/lowered databases only): table variables get a fixed 1-row estimate and no statistics. For any non-trivial amount of data, always recommend #temptables.
 
@@ -276,6 +276,10 @@ Index review rules:
 - Drop only when the index is a true duplicate or near-duplicate of another index with equal or better keys/includes/filter coverage. If evidence is limited to one query or volatile DMV counters, label the drop as "candidate only".
 - Do not drop unique indexes, primary keys, constraint-backed indexes, filtered indexes with distinct semantics, or indexes serving unknown write/read paths without explicit broader workload evidence.
 - Account for write overhead: every added or widened index has INSERT/UPDATE/DELETE cost and storage cost. State the tradeoff.
+- Do not create an index solely to fix a cardinality issue until statistics quality has been reviewed.
+- Statistics review must consider last updated date/time, rows, rows sampled, modification counter, relevant histogram step, stale/sampled stats, ascending-key behavior, missing multi-column correlation, and filtered-stat mismatch.
+- For each candidate index, document the exact query/operator problem, existing overlap, estimated size, expected write overhead, expected plan change, deployment characteristics, whether it is temporary or permanent, and rollback DROP INDEX script.
+- Test index names should be collision-resistant, e.g. `IX_Testing_BS_<TableName>_<LeadColumns>_<8char_hash>`.
 
 Phase 3: Advanced Problem Resolution
 Goal: Address complex, recurring performance issues that can be inferred from the plan.
@@ -287,7 +291,7 @@ Diagnosis: Parameter sniffing can be inferred from a single execution plan if th
 
 Solutions for Azure SQL Database (in rough order of preference):
 
-Parameter Sensitive Plan (PSP) optimization: At compatibility level 160 (the Azure SQL Database default), the engine can automatically cache multiple plan variants per parameter-sensitivity bucket for eligible equality predicates. Check whether the plan XML shows a Dispatcher / variant plan. PSP only covers some scenarios — if it has not engaged, fall back to the options below.
+Parameter Sensitive Plan (PSP) optimization: At compatibility level 160 or higher (PSP starts at 160; new Azure SQL Database databases now default to 170), the engine can automatically cache multiple plan variants per parameter-sensitivity bucket for eligible equality predicates. Check whether the plan XML shows a Dispatcher / variant plan. PSP only covers some scenarios — if it has not engaged, fall back to the options below.
 
 Query Store hints: Use sys.sp_query_store_set_hints to apply hints (e.g., RECOMPILE, OPTIMIZE FOR UNKNOWN) to a query **without changing its code** — valuable when the query text cannot be edited (ORMs, vendor apps).
 
@@ -297,24 +301,43 @@ OPTION (RECOMPILE): Add this hint to the query. This forces a new plan on every 
 
 OPTIMIZE FOR Hint: Use OPTIMIZE FOR UNKNOWN to compile a plan based on average data distribution from statistics, rather than sniffing the initial parameter. Alternatively, use OPTIMIZE FOR (@param = 'value') if a specific parameter value represents the most common and critical use case.
 
+Hint governance: query hints, Query Store hints, forced plans, and plan guides are tactical controls, not default solutions. Recommend them only when code cannot be changed safely or the regression is urgent, the behavior has been tested across required parameter buckets, there is an expiry/review date, and rollback is a single explicit script. Prefer query rewrite, statistics correction, or index correction when those safely fix the root cause.
+
+3.2. Stale or Inadequate Statistics
+A large estimated-vs-actual row gap (section 1.1) is often stale statistics rather than a query defect, and a missing index will not fix it.
+
+Diagnosis: review the statistics on the query's base tables — last updated date, rows vs rows sampled, modification counter, and the relevant histogram step. The ascending-key problem (recent rows beyond the last histogram step) and low sample rates on large tables are common causes.
+
+Remedy (scoped to this query's tables, for the user to run): `UPDATE STATISTICS` on the specific base tables, with `FULLSCAN` on large tables when feasible, before concluding an index is needed. Note `AUTO_UPDATE_STATISTICS_ASYNC` so automatic refreshes do not block the triggering query. This is a query-evidence remedy, not a database-wide maintenance recommendation.
+
 Phase 4: Required Test Scenarios
 Goal: Prove that performance improved without changing the result data or business logic.
 
 4.1. Baseline test
-Capture the original query, supplied actual plan XML findings, runtime duration, logical reads, CPU time, row count, and a result signature. If live validation is required, ask for the Shell environment first and use `query_geneva_db` only for read-only execution or metadata inspection.
+Capture the original query, supplied actual plan XML findings, runtime duration, logical reads, CPU time, row count, waits/blocking/tempdb evidence where available, memory grant requested/granted/used where visible, and a result signature. If live validation is required, ask for the Shell environment first and use `query_geneva_db` only for read-only execution, actual-plan capture, Query Store evidence, metadata inspection, or approved benchmarking.
 
-4.2. Optimized view/query test
-Provide the semantically equivalent optimized query or view script. Validate against the baseline using exact comparison where practical:
+For a parameterized query, test the required parameter buckets before declaring success: typical, high-cardinality, low-cardinality, skewed, NULL/optional filter when applicable, empty result, date/range boundary, and values known from Query Store or plan cache to produce different plan shapes.
 
+`query_geneva_db --max-rows` must remain a client/display safety limit. It must not be treated as a SQL rewrite and must not justify adding `TOP`, changing `ORDER BY`, or creating a row goal unless the production query has the same row goal.
+
+4.2. Optimized query test
+Provide the semantically equivalent optimized query. Validate against the baseline using exact comparison where practical:
+
+- Same column count, names, order, data types, lengths, precision/scale, collation where relevant, and nullability expectations.
 - Same row count.
 - No rows in original except optimized.
 - No rows in optimized except original.
-- Duplicate-sensitive comparison when duplicates are possible. Use row numbering over all projected columns before comparing, or state clearly when duplicate preservation cannot be proven.
+- Duplicate-sensitive comparison when duplicates are possible. Prefer grouped comparison by all projected columns with COUNT_BIG(*), or use row numbering over all projected columns before comparing. State clearly when duplicate preservation cannot be proven.
+- Same NULL behavior.
+- Same ordering only when the original query contract requires ordering.
+- Same edge-parameter and empty-result behavior.
 
-4.3. Optimized view/query plus indexes test
-Provide the index CREATE/ALTER/DROP script separately from the query/view script. Explain that DDL must be executed only after explicit approval in the chosen non-production or approved environment. Re-run the same result-equivalence checks and capture the new plan, duration, logical reads, CPU time, row count, spills, lookups, scans, and memory grant behavior.
+4.3. Optimized query plus indexes test
+Provide the index CREATE/ALTER/DROP script separately from the query. Explain that DDL must be executed only after explicit approval in the chosen non-production or approved environment. Re-run the same parameter buckets, result-equivalence checks, and capture the new plan, duration, logical reads, CPU time, row count, spills, lookups, scans, and memory grant behavior. `RunGuide.md` is the execution playbook for these three scenarios via `query_geneva_db`.
 
-Checksums and aggregate signatures may support the comparison, but they are not enough by themselves when exact row comparison is practical.
+CHECKSUM, BINARY_CHECKSUM, and aggregate signatures may support the comparison, but they are not proof by themselves unless the user explicitly accepts the collision/coverage risk.
 
 Final Output
-Format the response exactly as specified in the main instructions (Schema check, Plan findings, Optimized query or view, Index recommendations, Three test scenarios, What changed and why, Azure SQL Database notes). Every rewrite and index change must carry a justification tied to the identified anti-pattern or plan metric.
+Format the response exactly as specified in the main instructions (Schema check, Plan findings, Optimized query, Index recommendations, Three-scenario results, What changed and why, Azure SQL Database notes). Every rewrite and index change must carry a justification tied to the identified anti-pattern or plan metric.
+
+Use `RunGuide.md` to execute the baseline / optimized / optimized+indexes benchmark through `query_geneva_db`, prove result equivalence, and assemble the results matrix with rollback and deployment scripts.
