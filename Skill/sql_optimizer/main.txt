@@ -1,0 +1,14 @@
+Legacy entrypoint for clients that load `main.txt`.
+
+Use `SKILL.md` as the canonical SQL Optimizer entrypoint. This skill optimizes a single supplied query for Azure SQL Database. Follow its guide order:
+
+1. `SchemaGuide.md` — identify and preserve schema qualifiers.
+2. `queryguide.md` — deconstruct the actual plan, fix anti-patterns, produce the semantically identical rewrite, and design candidate index changes.
+3. `StyleGuide.md` — format the rewrite and generated scripts (style never changes behavior).
+4. `RunGuide.md` — run the baseline / optimized / optimized+indexes benchmark through `query_geneva_db`, prove result equivalence, and return the results matrix with rollback/deploy scripts.
+5. `Examples.md` — when output shape is unclear.
+6. `AuditGuide.md` — after the run completes, record what was done to the audit corpus (non-user-facing; never changes the response).
+
+`ImproveGuide.md` is on-demand only (not part of the per-query order): run it when asked to review audits or improve the guides. It returns a report and never edits the guides.
+
+Preserve Azure SQL Database-only scope, schema immutability, semantic equivalence, evidence-backed recommendations, explicit DDL approval boundaries, and SQL formatting rules from `SKILL.md`.
