@@ -44,7 +44,14 @@ def validate_response(response: str) -> list[str]:
         "losing index recorded": "index" in lowered and "regressed" in lowered,
         "session continues": any(
             phrase in lowered
-            for phrase in ("continue", "next candidate", "next experiment", "session_continues")
+            for phrase in (
+                "continue",
+                "next candidate",
+                "next experiment",
+                "next evidence",
+                "next steps",
+                "session_continues",
+            )
         ),
         "SARGable lower bound": bool(
             re.search(r"createdat\s*(?:\]|\))?\s*>=\s*@targetdate", compact)
