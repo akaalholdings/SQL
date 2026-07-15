@@ -1,64 +1,62 @@
-"""Guide invariants for the triage skill: strictly Azure SQL Database, strictly
-read-only. These string checks pin both so a future edit cannot quietly regress them."""
+from __future__ import annotations
 
 import pathlib
+import re
+
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
-
-GUIDES = sorted(SKILL_DIR.glob("*.md"))
-
-
-def _read(name: str) -> str:
-    return (SKILL_DIR / name).read_text(encoding="utf-8")
+TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
 
-def _all_guides_text() -> dict[str, str]:
-    return {p.name: p.read_text(encoding="utf-8") for p in GUIDES}
+def test_triage_is_self_contained_and_read_only() -> None:
+    assert TEXT.startswith("---\nname: sql-health-triage\n")
+    assert "This skill is permanently read-only" in TEXT
+    assert "Never call DDL, DML, unrestricted execution" in TEXT
+    assert not re.search(r"https?://|[A-Za-z]+Guide\.md", TEXT)
 
 
-def test_guides_exist():
-    assert GUIDES, f"no guides found in {SKILL_DIR}"
+def test_triage_uses_exact_outcome_vocabulary() -> None:
+    for state in ("healthy", "actionable", "partial", "inconclusive"):
+        assert f"`{state}`" in TEXT
+    assert "exactly one overall outcome" in TEXT
 
 
-# The toolset is strictly Azure SQL Database. Foreign engines/services may appear only
-# on the Platform Lock's own exclusion line ("Do not reference ...").
-_FOREIGN_ENGINES = ("Synapse", "PostgreSQL", "MySQL", "Managed Instance", "Fabric",
-                    "Databricks", "Oracle", "MariaDB", "SQLite", "SQL Server", "on-prem")
+def test_incomplete_evidence_can_never_be_healthy() -> None:
+    assert "Do not call an outcome healthy when any required evidence is unavailable" in TEXT
+    assert "report `partial`" in TEXT
+    assert "use partial or inconclusive, not healthy" in TEXT
 
 
-def test_platform_lock_is_strict():
-    skill = _read("SKILL.md")
-    assert "Platform Lock" in skill
-    assert "Azure SQL Database" in skill
-    for name, text in _all_guides_text().items():
-        kept = [line for line in text.splitlines()
-                if "Do not reference" not in line and "on-prem intuition" not in line]
-        remainder = "\n".join(kept)
-        for engine in _FOREIGN_ENGINES:
-            assert engine not in remainder, f"{name} references foreign engine {engine!r}"
+def test_triage_normalizes_provenance_window_units_and_identity() -> None:
+    for phrase in (
+        "collection start and end time in UTC",
+        "availability and completeness",
+        "truncation and row/sample limits",
+        "value, units, threshold/baseline",
+        "stable query identity",
+        "parameter bucket",
+        "artifact reference",
+    ):
+        assert phrase in TEXT
 
 
-def test_no_company_references():
-    # The skills are generic Azure SQL tooling — no employer/company context
-    # (capital-S "Shell"; lowercase command-shell mentions are fine).
-    for name, text in _all_guides_text().items():
-        assert "Shell" not in text.replace("PowerShell", ""), f"{name} references the company"
+def test_triage_uses_shared_cases_and_safe_handoffs() -> None:
+    for tool in (
+        "start_performance_case",
+        "collect_performance_evidence",
+        "get_performance_case",
+    ):
+        assert f"`{tool}`" in TEXT
+    assert "case id is the durable handoff key" in TEXT
+    assert "Do not copy raw SQL into local JSON" in TEXT
 
 
-def test_skill_is_strictly_read_only():
-    skill = _read("SKILL.md")
-    assert "read-only" in skill.lower()
-    # write/admin tools may appear only in the NEVER-call list, and kill_session
-    # only as recommend-only — no guide may show them as calls to make.
-    for name, text in _all_guides_text().items():
-        for tool in ("execute_tsql_unrestricted(", "force_query_plan(",
-                     "apply_plan_action(", "rebuild_index(", "update_statistics(",
-                     "kill_session("):
-            assert tool not in text, f"{name} shows a write/admin tool call: {tool}"
-
-
-def test_findings_route_to_owners():
-    for name in ("SKILL.md", "TriageGuide.md", "ReportGuide.md"):
-        text = _read(name)
-        assert "sql-optimizer" in text, f"{name} missing the optimizer route"
-        assert "sql-plan-enforcer" in text, f"{name} missing the enforcer route"
+def test_deprecated_query_health_heuristics_are_absent() -> None:
+    forbidden = (
+        "fragment" + "ation",
+        "page life " + "expectancy",
+        "buffer cache " + "hit ratio",
+    )
+    lowered = TEXT.casefold()
+    for phrase in forbidden:
+        assert phrase not in lowered
