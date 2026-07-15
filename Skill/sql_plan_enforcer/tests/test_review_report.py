@@ -2,6 +2,9 @@
 plans (the unforce-failed condition) as the most severe, echo their exact unforce command as
 *informational*, and never mutate its input (no side effects = nothing applied)."""
 
+import json
+
+import review_report as rr
 from review_report import build_report, classify, render_text
 
 
@@ -78,10 +81,43 @@ def test_render_text_groups_and_shows_unforce_command():
 
 
 def test_ineligible_item_marked_monitoring_only():
-    text = render_text(build_report([regression(1, pct=0.1, eligible=False)]))
+    candidate = regression(1, pct=0.1, eligible=False)
+    candidate["reason"] = "regression below floor"
+    text = render_text(build_report([candidate]))
     assert "monitoring only" in text
+    assert "regression below floor" in text
+
+
+def test_review_only_item_explains_reason_without_suggesting_execution():
+    candidate = failing_forced(42)
+    candidate.update({
+        "eligible": False,
+        "review_only": True,
+        "review_reason": "forced-plan ownership is automatic or unknown; review only",
+    })
+
+    report = build_report([candidate])
+    text = render_text(report)
+
+    assert report["issues"][0]["review_only"] is True
+    assert "forced-plan ownership is automatic or unknown" in text
+    assert "would run:" not in text
+    assert "would apply:" not in text
+
+
+def test_non_object_candidate_fails_closed_as_informational():
+    report = build_report(["not-an-object"])
+    assert report["issues"][0]["severity"] == "info"
+    assert report["issues"][0]["eligible"] is None
 
 
 def test_handoff_rendered_as_optimizer_handoff():
     text = render_text(build_report([top_consumer(9)]))
     assert "hand off to sql_optimizer" in text
+
+
+def test_cli_rejects_non_list_candidates(tmp_path, capsys):
+    payload = tmp_path / "payload.json"
+    payload.write_text(json.dumps({"candidates": "not-a-list"}), encoding="utf-8")
+    assert rr.main(["review_report.py", "--input", str(payload)]) == 1
+    assert "candidates must be a list" in capsys.readouterr().err

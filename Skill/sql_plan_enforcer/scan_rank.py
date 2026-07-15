@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rank Query Store scan results into a prioritized list of tuning candidates.
 
-The four scan queries in ``ScanGuide.md`` are run through ``query_geneva_db --format json``;
+The scan queries in ``ScanGuide.md`` are run through ``azure-sql-mcp`` read tools;
 each returns rows describing candidate queries. This module merges those rows, scores and
 tiers them, applies eligibility thresholds (blast-radius / noise guards), and emits a single
 ranked list the enforcement loop walks top-down.
@@ -24,11 +24,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
+import pathlib
 import sys
 from dataclasses import dataclass
 
 CATEGORIES = ("regression", "top_consumer", "param_sensitive", "stale_forced")
+LEVERS = ("force_plan", "set_hints", "unforce_plan", "handoff_optimizer")
 
 # Lower tier = handled first. A forced plan that is actively failing to force is the most
 # urgent thing in the fleet (it is broken right now), ahead of fresh regressions.
@@ -82,10 +85,17 @@ class Thresholds:
 
 
 def _num(value, default=0.0) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
+    if isinstance(value, bool):
         return default
+    try:
+        number = float(value)
+        return number if math.isfinite(number) else default
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def _positive_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def total_cost(candidate: dict) -> float:
@@ -100,6 +110,22 @@ def _coefficient_of_variation(candidate: dict) -> float:
     return _num(candidate.get("stdev_duration")) / avg
 
 
+def _true_flag(value: object) -> bool:
+    return value is True or (
+        isinstance(value, str) and value.strip().lower() in {"1", "true", "yes", "y"}
+    )
+
+
+def _contains_truncation(candidate: object) -> bool:
+    if isinstance(candidate, dict):
+        if _true_flag(candidate.get("truncated")):
+            return True
+        return any(_contains_truncation(value) for value in candidate.values())
+    if isinstance(candidate, (list, tuple)):
+        return any(_contains_truncation(value) for value in candidate)
+    return False
+
+
 def _default_lever(category: str, candidate: dict) -> str:
     if category == "regression":
         return "force_plan"
@@ -109,7 +135,7 @@ def _default_lever(category: str, candidate: dict) -> str:
         return "unforce_plan"
     # top_consumer: only an enforcer action when a better alternate plan exists;
     # otherwise it is a rewrite job for the sql_optimizer skill.
-    if candidate.get("proposed_plan_id"):
+    if _positive_int(candidate.get("proposed_plan_id")):
         return "force_plan"
     return "handoff_optimizer"
 
@@ -141,6 +167,37 @@ def _score(category: str, candidate: dict) -> float:
 
 
 def _eligibility(category: str, candidate: dict, t: Thresholds) -> tuple[bool, str]:
+    environment = candidate.get("environment")
+    if not isinstance(environment, str) or not environment.strip() or environment.strip().lower() in {
+        "unknown", "none", "null"
+    }:
+        return False, "environment is required for database-scoped query identity"
+    query_id = candidate.get("query_id")
+    if not _positive_int(query_id):
+        return False, "positive integer query_id is required for database-scoped query identity"
+    threshold_values = (
+        _num(t.min_regression_pct, float("nan")),
+        _num(t.min_cv, float("nan")),
+        _num(t.min_avg_duration, float("nan")),
+    )
+    if (
+        not _positive_int(t.min_executions)
+        or any(not math.isfinite(value) or value < 0 for value in threshold_values)
+    ):
+        return False, "ranking thresholds are invalid"
+    lever = candidate.get("proposed_lever") or _default_lever(category, candidate)
+    if lever not in LEVERS:
+        return False, f"unsupported proposed lever {lever!r}"
+    if lever == "force_plan" and not _positive_int(candidate.get("proposed_plan_id")):
+        return False, "force_plan requires a positive proposed_plan_id"
+    if lever == "unforce_plan" and not _positive_int(candidate.get("current_plan_id")):
+        return False, "unforce_plan requires a positive current_plan_id"
+    if candidate.get("review_only") or candidate.get("automatic_tuning_review_only"):
+        return False, candidate.get(
+            "review_reason", "candidate is review-only and cannot compete for apply"
+        )
+    if _contains_truncation(candidate):
+        return False, "truncated scan evidence is not eligible for enforcement"
     executions = _num(candidate.get("count_executions"))
 
     if category == "stale_forced":
@@ -205,6 +262,14 @@ def rank(candidates: list, thresholds: Thresholds | None = None) -> list:
     thresholds = thresholds or Thresholds()
     annotated = []
     for raw in candidates:
+        if not isinstance(raw, dict):
+            annotated.append({
+                "eligible": False,
+                "reason": "candidate must be an object",
+                "tier": TIER_TOP_CONSUMER + 1,
+                "score": 0.0,
+            })
+            continue
         category = raw.get("category")
         if category in CATEGORIES:
             eligible, reason = _eligibility(category, raw, thresholds)
@@ -252,11 +317,15 @@ def main(argv: list[str]) -> int:
     )
     args = parser.parse_args(argv[1:])
 
-    raw = sys.stdin.read() if args.input == "-" else open(args.input, encoding="utf-8").read()
     try:
+        raw = (
+            sys.stdin.read()
+            if args.input == "-"
+            else pathlib.Path(args.input).read_text(encoding="utf-8")
+        )
         payload = json.loads(raw)
         candidates = _extract_candidates(payload)
-    except (json.JSONDecodeError, ValueError) as exc:
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(f"could not parse scan input: {exc}", file=sys.stderr)
         return 1
 

@@ -1,0 +1,1474 @@
+[
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Index Design SQLChallenge - One Year Wonders (50 minutes)' as source evidence for Design the best rowstore index for one query; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "topic-course",
+    "title": "Index Design SQLChallenge - One Year Wonders (50 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads",
+          "one year wonders",
+          "single nonclustered index"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/",
+    "word_count": 201
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Explore the index pages and their links (10 minutes)' as source evidence for Deduplicate and consolidate indexes, Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Explore the index pages and their links (10 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "duplicate"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/explore-the-index-pages-and-their-links/",
+    "word_count": 1555
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Levels 2 & 3 Sample Solutions for Indexing One Year Wonders (23 minutes)' as source evidence for Design the best rowstore index for one query; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Levels 2 & 3 Sample Solutions for Indexing One Year Wonders (23 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "one year wonders"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/level-2-sample-solutions-for-indexing-one-year-wonders-23-minutes/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Meet Your Indexing SQLChallenge (7 minutes)' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Meet Your Indexing SQLChallenge (7 minutes)",
+    "topics": [],
+    "url": "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/meet-your-indexing-sqlchallenge-7-minutes/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Level 1 Sample Solutions for Indexing One Year Wonders (19 minutes)' as source evidence for Design the best rowstore index for one query; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Level 1 Sample Solutions for Indexing One Year Wonders (19 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "one year wonders"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/sample-solutions-for-indexing-one-year-wonders-webinar-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'How Index Keys and Includes Work (1 hour)' as source evidence for Index keys and INCLUDE columns; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "topic-course",
+    "title": "How Index Keys and Includes Work (1 hour)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes",
+          "key columns"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/",
+    "word_count": 77
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Create a test index and discover its structure (8 minutes)' as source evidence for Index keys and INCLUDE columns, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Create a test index and discover its structure (8 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "partition",
+          "partitioned"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/create-a-test-index-and-discover-its-structure/",
+    "word_count": 1481
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Get ready to dive into indexing (3 minutes)' as source evidence for Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Get ready to dive into indexing (3 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes",
+          "index structure"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/get-ready-to-dive-into-indexing/",
+    "word_count": 372
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Index structure, illustrated (3 minutes)' as source evidence for Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Index structure, illustrated (3 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes",
+          "index structure",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/index-structure-illustrated/",
+    "word_count": 542
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Seeks and scans, illustrated (4 minutes)' as source evidence for Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Seeks and scans, illustrated (4 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/seeks-and-scans-illustrated/",
+    "word_count": 628
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Three question video quiz' as source evidence for Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Three question video quiz",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/three-question-video-quiz/",
+    "word_count": 1107
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Trace buffer latches on seeks and scans (16 minutes)' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Trace buffer latches on seeks and scans (16 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/trace-buffer-latches-on-seeks-and-scans/",
+    "word_count": 2698
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Update an important key value (9 minutes)' as source evidence for Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Update an important key value (9 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "index structure",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/update-an-important-key-value/",
+    "word_count": 1426
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Quiz: How index keys and included columns work' as source evidence for Index keys and INCLUDE columns; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Quiz: How index keys and included columns work",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes",
+          "key columns"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/your-final/",
+    "word_count": 358
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Indexing for Windowing Functions (45 minutes)' as source evidence for Indexing for window functions, Partitioning and columnstore plans; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "topic-course",
+    "title": "Indexing for Windowing Functions (45 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "over()",
+          "rank",
+          "row_number",
+          "window aggregate",
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/indexing-for-windowing-functions/",
+    "word_count": 127
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Bring in the nonclustered columnstore index! (8 minutes)' as source evidence for Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Bring in the nonclustered columnstore index! (8 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "window aggregate"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/indexing-for-windowing-functions/bring-in-the-nonclustered-columnstore-index/",
+    "word_count": 1181
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Dig into the plan and test a nonclustered index (11 minutes)' as source evidence for Index keys and INCLUDE columns, Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Dig into the plan and test a nonclustered index (11 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/indexing-for-windowing-functions/dig-into-the-plan-and-test-a-nonclustered-index/",
+    "word_count": 1832
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Hacking in the Window Aggregate operator with a rowstore nonclustered index (9 minutes)' as source evidence for Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Hacking in the Window Aggregate operator with a rowstore nonclustered index (9 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "window aggregate",
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/indexing-for-windowing-functions/hacking-in-the-window-aggregate-operator-with-a-rowstore-nonclustered-index/",
+    "word_count": 1488
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Meet the challenge code (9 minutes)' as source evidence for Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Meet the challenge code (9 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/indexing-for-windowing-functions/meet-the-challenge-code/",
+    "word_count": 1424
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Summary and recap (4 minutes)' as source evidence for Index keys and INCLUDE columns, Indexing for window functions, Partitioning and columnstore plans, Indexes can slow queries down; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Summary and recap (4 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "window aggregate",
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slower"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/indexing-for-windowing-functions/summary-and-recap/",
+    "word_count": 788
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'What can an indexed view do? (5 minutes)' as source evidence for Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "What can an indexed view do? (5 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/indexing-for-windowing-functions/what-can-an-indexed-view-do/",
+    "word_count": 826
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Learn Indexing by Solving Problems (7 hours 23 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "topic-course",
+    "title": "Learn Indexing by Solving Problems (7 hours 23 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/",
+    "word_count": 166
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 3 - Keys vs. Includes (72 minutes)' as source evidence for Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 3 - Keys vs. Includes (72 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/keys-vs-includes-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Links Discussed in Live Sessions of This Course' as source evidence for Deduplicate and consolidate indexes, Index keys and INCLUDE columns, Indexing for window functions; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Links Discussed in Live Sessions of This Course",
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "duplicate"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "windowing"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/links-we-discussed-in-class/",
+    "word_count": 100
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 2 - Nonclustered Key Choice (51 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 2 - Nonclustered Key Choice (51 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/nonclustered-key-choice-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 4 - Indexing Top & Order By (46 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 4 - Indexing Top & Order By (46 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-4-indexing-top-order-by-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 5 - Indexing a Non-SARGable Column (41 minutes)' as source evidence for Non-SARGable predicates, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 5 - Indexing a Non-SARGable Column (41 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Fix predicate shape or use computed-column strategies only when measured.",
+        "id": "sargability",
+        "label": "Non-SARGable predicates",
+        "matched_terms": [
+          "non-sargable",
+          "sarg"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-5-indexing-a-non-sargable-column-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 6 - Indexing for GROUP BY (58 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 6 - Indexing for GROUP BY (58 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-6-indexing-for-group-by-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 7 - Choosing Between Similar Indexes (67 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 7 - Choosing Between Similar Indexes (67 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-7-choosing-between-similar-indexes-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 8 - Comparing Plans Between Two Clustered Tables (48 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 8 - Comparing Plans Between Two Clustered Tables (48 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-8-comparing-plans-between-two-clustered-tables-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topics 9 & 10 - Indexing an Untamed Server (50 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topics 9 & 10 - Indexing an Untamed Server (50 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-9-indexing-an-untamed-server-session-recording/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Topic 1 - Welcome! Our Mission & Some Logistics (10 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Topic 1 - Welcome! Our Mission & Some Logistics (10 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/welcome-our-mission-some-logistics/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Deduplicate Indexes - Level 1 SQLChallenge (56 minutes)' as source evidence for Deduplicate and consolidate indexes, Index keys and INCLUDE columns; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "topic-course",
+    "title": "Deduplicate Indexes - Level 1 SQLChallenge (56 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "deduplicate",
+          "duplicate",
+          "redundant",
+          "safest ones to drop"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "index structure"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/",
+    "word_count": 91
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Analysis and Deduplication (22 minutes)' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Analysis and Deduplication (22 minutes)",
+    "topics": [],
+    "url": "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/analysis-and-deduplication/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Scripting Out All the Indexes (15 minutes)' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Scripting Out All the Indexes (15 minutes)",
+    "topics": [],
+    "url": "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/deduplicate-indexes-sample-solutions-script-and-video/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Grouping the Indexes for Analysis (11 minutes)' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Grouping the Indexes for Analysis (11 minutes)",
+    "topics": [],
+    "url": "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/grouping-the-indexes-for-analysis/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Summing Up and Looking Ahead (3 minutes)' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Summing Up and Looking Ahead (3 minutes)",
+    "topics": [],
+    "url": "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/summing-up-and-looking-ahead/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Challenge Setup (5 minutes)' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Challenge Setup (5 minutes)",
+    "topics": [],
+    "url": "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/your-sqlchallenge-deduplicate-indexes/",
+    "word_count": 0
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Execution Plans: Partitioned Tables and Columnstore Indexes (1 hour 30 minutes)' as source evidence for Partitioning and columnstore plans; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "topic-course",
+    "title": "Execution Plans: Partitioned Tables and Columnstore Indexes (1 hour 30 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "rowgroup"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/",
+    "word_count": 120
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Batch mode hacks, and what does the future hold? (9 minutes)' as source evidence for Indexing for window functions, Partitioning and columnstore plans; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Batch mode hacks, and what does the future hold? (9 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "window aggregate"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/batch-mode-hacks-and-what-does-the-future-hold/",
+    "word_count": 1465
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Columnstore: 0 partitions accessed- but rowgroup elimination! (15 minutes)' as source evidence for Design the best rowstore index for one query, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Columnstore: 0 partitions accessed- but rowgroup elimination! (15 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "rowgroup"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/columnstore-0-partitions-accessed-but-rowgroup-elimination/",
+    "word_count": 2194
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Disk based rowstore: actual plans, cached plans, and Query Store (21 minutes)' as source evidence for Design the best rowstore index for one query, Partitioning and columnstore plans, Indexes can slow queries down, Non-SARGable predicates; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Disk based rowstore: actual plans, cached plans, and Query Store (21 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned"
+        ]
+      },
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slower"
+        ]
+      },
+      {
+        "guidance_signal": "Fix predicate shape or use computed-column strategies only when measured.",
+        "id": "sargability",
+        "label": "Non-SARGable predicates",
+        "matched_terms": [
+          "computed column"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/disk-based-rowstore-actual-plans-cached-plans-and-query-store/",
+    "word_count": 3256
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Concepts to remember, and thank you! (4 minutes)' as source evidence for Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Concepts to remember, and thank you! (4 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "rowgroup"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/highlights-of-what-we-covered-in-this-course/",
+    "word_count": 550
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'More fun with rowgroup elimination and predicate pushdown (12 minutes)' as source evidence for Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "More fun with rowgroup elimination and predicate pushdown (12 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "predicate pushdown",
+          "rowgroup"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/more-fun-with-rowgroup-elimination-and-predicate-pushdown/",
+    "word_count": 2036
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Partitioning and columnstore concepts (10 minutes)' as source evidence for Partitioning and columnstore plans; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Partitioning and columnstore concepts (10 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "rowgroup"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/partitioning-and-columnstore-concepts/",
+    "word_count": 1536
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Quiz on partitioned tables and columnstore indexes' as source evidence for Partitioning and columnstore plans; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Quiz on partitioned tables and columnstore indexes",
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "predicate pushdown",
+          "rowgroup"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/quiz-time/",
+    "word_count": 607
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'When doing more is less work: comparing Query Time Stats for two queries (5 minutes)' as source evidence for Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "When doing more is less work: comparing Query Time Stats for two queries (5 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "predicate pushdown"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/when-doing-more-is-less-work-comparing-query-time-stats-for-two-queries/",
+    "word_count": 828
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'When you can get batch mode operators, and an example of their power (14 minutes)' as source evidence for Index keys and INCLUDE columns, Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "When you can get batch mode operators, and an example of their power (14 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "window aggregate",
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/when-you-can-get-batch-mode-operators-and-an-example-of-their-power-14-minutes/",
+    "word_count": 2386
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Why Creating an Index Can Slow Down a Query (1 hour 30 minutes)' as source evidence for Indexes can slow queries down; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "topic-course",
+    "title": "Why Creating an Index Can Slow Down a Query (1 hour 30 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slow down",
+          "slower"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/",
+    "word_count": 80
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Quiz on indexes and query performance tuning' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Quiz on indexes and query performance tuning",
+    "topics": [],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/course-quiz/",
+    "word_count": 665
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Explore the slow query execution plan (15 minutes)' as source evidence for Deduplicate and consolidate indexes, Indexes can slow queries down, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Explore the slow query execution plan (15 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "duplicate"
+        ]
+      },
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slower"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/explore-the-slow-querys-execution-plan-15-minutes/",
+    "word_count": 2425
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Solutions using Dynamic SQL (14 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Solutions using Dynamic SQL (14 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/solutions-using-dynamic-sql/",
+    "word_count": 2171
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Solutions with index hints and local variables (13 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Solutions with index hints and local variables (13 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/solutions-with-index-hints-and-local-variables-13-minutes/",
+    "word_count": 2352
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Meet your problem query (20 minutes)' as source evidence for Design the best rowstore index for one query, Indexes can slow queries down, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Meet your problem query (20 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slower"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/step-through-your-problem-query/",
+    "word_count": 3215
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'TSQL rewrites that do NOT fix the problem (5 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "TSQL rewrites that do NOT fix the problem (5 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/tsql-rewrites-that-do-not-fix-the-problem/",
+    "word_count": 786
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Using a temp table as a fake variable (8 minutes)' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Using a temp table as a fake variable (8 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "sort"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/using-a-temp-table-as-a-fake-variable/",
+    "word_count": 1281
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Which solution is best? (3 minutes)' as source context; review manually before turning it into indexing guidance.",
+    "source": "sitemap-lesson",
+    "title": "Which solution is best? (3 minutes)",
+    "topics": [],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/which-solution-is-best-3-minutes/",
+    "word_count": 554
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Why did the query slow down? (5 minutes)' as source evidence for Indexes can slow queries down; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Why did the query slow down? (5 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slow down"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/why-did-the-query-slow-down/",
+    "word_count": 745
+  },
+  {
+    "code_block_count": 0,
+    "derived_digest": "Use 'Why is this a problem? (7 minutes)' as source evidence for Index keys and INCLUDE columns, Indexes can slow queries down; apply only after Azure SQL plan evidence confirms the pattern.",
+    "source": "sitemap-lesson",
+    "title": "Why is this a problem? (7 minutes)",
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns"
+        ]
+      },
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "regression",
+          "slower"
+        ]
+      }
+    ],
+    "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/why-is-this-a-problem/",
+    "word_count": 1050
+  }
+]

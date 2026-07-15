@@ -1,6 +1,8 @@
-"""Writing an audit must append a valid index row and persist the raw query verbatim."""
+"""Writing an audit must append a valid index row and redact raw SQL by default."""
 
 import json
+from concurrent.futures import ThreadPoolExecutor
+from stat import S_IMODE
 
 import pytest
 
@@ -30,7 +32,9 @@ def _index_lines(root):
     return (root / "index.jsonl").read_text(encoding="utf-8").splitlines()
 
 
-def test_write_audit_appends_valid_row_and_detail(tmp_path):
+def test_write_audit_appends_valid_row_and_redacted_detail(tmp_path, monkeypatch):
+    monkeypatch.delenv("SQL_OPTIMIZER_AUDIT_FULL_SQL", raising=False)
+
     record = record_audit.write_audit(RUN, root=tmp_path)
 
     lines = _index_lines(tmp_path)
@@ -42,7 +46,17 @@ def test_write_audit_appends_valid_row_and_detail(tmp_path):
 
     detail = tmp_path / record["detail_file"]
     assert detail.exists()
-    # raw query stored verbatim
+    detail_text = detail.read_text(encoding="utf-8")
+    assert RAW_QUERY not in detail_text
+    assert "SQL redacted by default" in detail_text
+
+
+def test_write_audit_can_persist_raw_sql_when_explicitly_enabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("SQL_OPTIMIZER_AUDIT_FULL_SQL", "1")
+
+    record = record_audit.write_audit(RUN, root=tmp_path)
+
+    detail = tmp_path / record["detail_file"]
     assert RAW_QUERY in detail.read_text(encoding="utf-8")
 
 
@@ -88,6 +102,16 @@ def test_bad_outcome_raises(tmp_path):
         record_audit.write_audit({"query": RAW_QUERY, "outcome": "nope"}, root=tmp_path)
 
 
+def test_malformed_run_fields_are_rejected_instead_of_coerced(tmp_path):
+    with pytest.raises(ValueError, match="equivalence_proven"):
+        record_audit.write_audit(
+            dict(RUN, equivalence_proven="false"),
+            root=tmp_path,
+        )
+    with pytest.raises(ValueError, match="tables must be a list"):
+        record_audit.write_audit(dict(RUN, tables="dbo.Orders"), root=tmp_path)
+
+
 def test_cli_uses_env_audit_dir(tmp_path, monkeypatch):
     audit_dir = tmp_path / "corpus"
     monkeypatch.setenv("SQL_OPTIMIZER_AUDIT_DIR", str(audit_dir))
@@ -109,3 +133,55 @@ def test_cli_opt_out_writes_nothing(tmp_path, monkeypatch):
     rc = record_audit.main(["record_audit.py", "--input", str(run_file)])
     assert rc == 0
     assert not audit_dir.exists()
+
+
+def test_audit_dir_resolution(tmp_path, monkeypatch):
+    import pathlib
+
+    import record_audit as ra
+
+    monkeypatch.setattr(pathlib.Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("SQL_OPTIMIZER_AUDIT_DIR", raising=False)
+    assert ra.audit_dir() == tmp_path / ".sql-skills" / "sql_optimizer" / "audits"
+
+    legacy = tmp_path / ".copilot" / "skills" / "sql_optimizer" / "audits"
+    legacy.mkdir(parents=True)
+    assert ra.audit_dir() == legacy
+
+    monkeypatch.setenv("SQL_OPTIMIZER_AUDIT_DIR", str(tmp_path / "override"))
+    assert ra.audit_dir() == tmp_path / "override"
+
+
+def test_concurrent_audits_are_serialized_and_private(tmp_path):
+    runs = [
+        dict(RUN, query=f"{RAW_QUERY} AND OrderId = {index}")
+        for index in range(12)
+    ]
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        records = list(
+            executor.map(lambda run: record_audit.write_audit(run, root=tmp_path), runs)
+        )
+
+    lines = _index_lines(tmp_path)
+    assert len(lines) == len(runs)
+    assert all(validate(json.loads(line)) == [] for line in lines)
+    assert len({record["id"] for record in records}) == len(runs)
+    assert S_IMODE(tmp_path.stat().st_mode) == 0o700
+    assert S_IMODE((tmp_path / "runs").stat().st_mode) == 0o700
+    assert S_IMODE((tmp_path / "reports").stat().st_mode) == 0o700
+    assert S_IMODE((tmp_path / ".lock").stat().st_mode) == 0o600
+    assert S_IMODE((tmp_path / "index.jsonl").stat().st_mode) == 0o600
+    assert all(
+        S_IMODE((tmp_path / record["detail_file"]).stat().st_mode) == 0o600
+        for record in records
+    )
+
+
+def test_storage_rejects_symlinked_parent_component(tmp_path):
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "linked"
+    link.symlink_to(real, target_is_directory=True)
+
+    with pytest.raises(OSError, match="symlinked"):
+        record_audit.write_audit(RUN, root=link / "audits")

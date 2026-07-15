@@ -1,0 +1,1226 @@
+[
+  {
+    "derived_digest": "Use 'deduplicating_indexes_sqlchallenge/Deduplicating-Indexes-Level-1_01-Problem.sql' as source evidence for Deduplicate and consolidate indexes, Index keys and INCLUDE columns; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/deduplicating_indexes_sqlchallenge/Deduplicating-Indexes-Level-1_01-Problem.sql",
+    "line_count": 149,
+    "path": "deduplicating_indexes_sqlchallenge/Deduplicating-Indexes-Level-1_01-Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 9,
+      "drop_index": 0,
+      "include": 7,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "deduplicate",
+          "duplicate"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'deduplicating_indexes_sqlchallenge/Deduplicating-Indexes-Level-1_02-Solutions.sql' as source evidence for Deduplicate and consolidate indexes, Index keys and INCLUDE columns, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/deduplicating_indexes_sqlchallenge/Deduplicating-Indexes-Level-1_02-Solutions.sql",
+    "line_count": 726,
+    "path": "deduplicating_indexes_sqlchallenge/Deduplicating-Indexes-Level-1_02-Solutions.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 30,
+      "drop_index": 7,
+      "include": 32,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "deduplicate",
+          "duplicate",
+          "overlap"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "partition",
+          "partitioned"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'execution_plans_partitioning_columnstore/01_Setup_Reading-Execution-Plans-Partitioned-Tables-Columnstore-Indexes.sql' as source evidence for Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/execution_plans_partitioning_columnstore/01_Setup_Reading-Execution-Plans-Partitioned-Tables-Columnstore-Indexes.sql",
+    "line_count": 70,
+    "path": "execution_plans_partitioning_columnstore/01_Setup_Reading-Execution-Plans-Partitioned-Tables-Columnstore-Indexes.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 1
+    },
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'execution_plans_partitioning_columnstore/02-Demo-Reading-Execution-Plans-Partitioned-Tables-Columnstore-Indexes.sql' as source evidence for Design the best rowstore index for one query, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/execution_plans_partitioning_columnstore/02-Demo-Reading-Execution-Plans-Partitioned-Tables-Columnstore-Indexes.sql",
+    "line_count": 364,
+    "path": "execution_plans_partitioning_columnstore/02-Demo-Reading-Execution-Plans-Partitioned-Tables-Columnstore-Indexes.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 1,
+      "statistics_io": 12
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "rowgroup"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'execution_plans_partitioning_columnstore/03-Batch-mode-hacks.sql' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, Indexing for window functions, Partitioning and columnstore plans; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/execution_plans_partitioning_columnstore/03-Batch-mode-hacks.sql",
+    "line_count": 361,
+    "path": "execution_plans_partitioning_columnstore/03-Batch-mode-hacks.sql",
+    "signals": {
+      "computed_column": 8,
+      "create_index": 1,
+      "drop_index": 2,
+      "include": 1,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned"
+        ]
+      },
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "regression"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'how_index_keys_and_includes_work/How-Keys-and-Included-Columns-Work.sql' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/how_index_keys_and_includes_work/How-Keys-and-Included-Columns-Work.sql",
+    "line_count": 460,
+    "path": "how_index_keys_and_includes_work/How-Keys-and-Included-Columns-Work.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 2,
+      "drop_index": 0,
+      "include": 2,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes",
+          "index structure",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'index_one_year_wonders_sqlchallenge/01_Index-One-Year-Wonders_SQLChallenge_Problem.sql' as source evidence for Design the best rowstore index for one query, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/index_one_year_wonders_sqlchallenge/01_Index-One-Year-Wonders_SQLChallenge_Problem.sql",
+    "line_count": 122,
+    "path": "index_one_year_wonders_sqlchallenge/01_Index-One-Year-Wonders_SQLChallenge_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 2
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads",
+          "one year wonders",
+          "single nonclustered index"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'index_one_year_wonders_sqlchallenge/02_Index-One-Year-Wonders_SQLChallenge_Level-1-Solutions.sql' as source context; review manually before turning it into indexing guidance.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/index_one_year_wonders_sqlchallenge/02_Index-One-Year-Wonders_SQLChallenge_Level-1-Solutions.sql",
+    "line_count": 501,
+    "path": "index_one_year_wonders_sqlchallenge/02_Index-One-Year-Wonders_SQLChallenge_Level-1-Solutions.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": []
+  },
+  {
+    "derived_digest": "Use 'index_one_year_wonders_sqlchallenge/03_Index-One-Year-Wonders_SQLChallenge_Levels-2-and-3-Solutions.sql' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, Non-SARGable predicates, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/index_one_year_wonders_sqlchallenge/03_Index-One-Year-Wonders_SQLChallenge_Levels-2-and-3-Solutions.sql",
+    "line_count": 315,
+    "path": "index_one_year_wonders_sqlchallenge/03_Index-One-Year-Wonders_SQLChallenge_Levels-2-and-3-Solutions.sql",
+    "signals": {
+      "computed_column": 9,
+      "create_index": 6,
+      "drop_index": 4,
+      "include": 5,
+      "statistics_io": 16
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Fix predicate shape or use computed-column strategies only when measured.",
+        "id": "sargability",
+        "label": "Non-SARGable predicates",
+        "matched_terms": [
+          "computed column"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'indexing_for_windowing_functions/Indexing-for-Windowing-Functions.sql' as source evidence for Index keys and INCLUDE columns, Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/indexing_for_windowing_functions/Indexing-for-Windowing-Functions.sql",
+    "line_count": 508,
+    "path": "indexing_for_windowing_functions/Indexing-for-Windowing-Functions.sql",
+    "signals": {
+      "computed_column": 6,
+      "create_index": 3,
+      "drop_index": 5,
+      "include": 3,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "window aggregate",
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/0_RestoreDatabase.sql' as source context; review manually before turning it into indexing guidance.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/0_RestoreDatabase.sql",
+    "line_count": 60,
+    "path": "learn_indexing_by_solving_problems/0_RestoreDatabase.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": []
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-2_Nonclustered-Key-Choice_Problem.sql' as source evidence for Design the best rowstore index for one query, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-2_Nonclustered-Key-Choice_Problem.sql",
+    "line_count": 73,
+    "path": "learn_indexing_by_solving_problems/Topic-2_Nonclustered-Key-Choice_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 1,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-2_Nonclustered-Key-Choice_Solution.sql' as source evidence for Design the best rowstore index for one query, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-2_Nonclustered-Key-Choice_Solution.sql",
+    "line_count": 315,
+    "path": "learn_indexing_by_solving_problems/Topic-2_Nonclustered-Key-Choice_Solution.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 3,
+      "drop_index": 2,
+      "include": 2,
+      "statistics_io": 6
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-3_Keys-vs-Includes_Problem.sql' as source evidence for Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-3_Keys-vs-Includes_Problem.sql",
+    "line_count": 65,
+    "path": "learn_indexing_by_solving_problems/Topic-3_Keys-vs-Includes_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 3,
+      "drop_index": 0,
+      "include": 1,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-3_Keys-vs-Includes_Solution.sql' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, Non-SARGable predicates, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-3_Keys-vs-Includes_Solution.sql",
+    "line_count": 329,
+    "path": "learn_indexing_by_solving_problems/Topic-3_Keys-vs-Includes_Solution.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 5,
+      "drop_index": 4,
+      "include": 3,
+      "statistics_io": 4
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Fix predicate shape or use computed-column strategies only when measured.",
+        "id": "sargability",
+        "label": "Non-SARGable predicates",
+        "matched_terms": [
+          "seekable"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-4_Indexing-Top-Order-By_Problem.sql' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-4_Indexing-Top-Order-By_Problem.sql",
+    "line_count": 75,
+    "path": "learn_indexing_by_solving_problems/Topic-4_Indexing-Top-Order-By_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 1,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-4_Indexing-Top-Order-By_Solution.sql' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-4_Indexing-Top-Order-By_Solution.sql",
+    "line_count": 235,
+    "path": "learn_indexing_by_solving_problems/Topic-4_Indexing-Top-Order-By_Solution.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 4,
+      "drop_index": 3,
+      "include": 2,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "best index"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-5_Indexing-a-Non-SARGABLE-Column_Problem.sql' as source evidence for Non-SARGable predicates, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-5_Indexing-a-Non-SARGABLE-Column_Problem.sql",
+    "line_count": 88,
+    "path": "learn_indexing_by_solving_problems/Topic-5_Indexing-a-Non-SARGABLE-Column_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 2
+    },
+    "topics": [
+      {
+        "guidance_signal": "Fix predicate shape or use computed-column strategies only when measured.",
+        "id": "sargability",
+        "label": "Non-SARGable predicates",
+        "matched_terms": [
+          "non-sargable",
+          "sarg"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-5_Indexing-a-Non-SARGABLE-Column_Solution.sql' as source evidence for Partitioning and columnstore plans, Non-SARGable predicates, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-5_Indexing-a-Non-SARGABLE-Column_Solution.sql",
+    "line_count": 446,
+    "path": "learn_indexing_by_solving_problems/Topic-5_Indexing-a-Non-SARGABLE-Column_Solution.sql",
+    "signals": {
+      "computed_column": 1,
+      "create_index": 6,
+      "drop_index": 1,
+      "include": 7,
+      "statistics_io": 4
+    },
+    "topics": [
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Fix predicate shape or use computed-column strategies only when measured.",
+        "id": "sargability",
+        "label": "Non-SARGable predicates",
+        "matched_terms": [
+          "computed column",
+          "non-sargable",
+          "sarg"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-6_Indexing-for-Group-By_Problem.sql' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-6_Indexing-for-Group-By_Problem.sql",
+    "line_count": 68,
+    "path": "learn_indexing_by_solving_problems/Topic-6_Indexing-for-Group-By_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 2
+    },
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-6_Indexing-for-Group-By_Solution.sql' as source evidence for Design the best rowstore index for one query, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-6_Indexing-for-Group-By_Solution.sql",
+    "line_count": 334,
+    "path": "learn_indexing_by_solving_problems/Topic-6_Indexing-for-Group-By_Solution.sql",
+    "signals": {
+      "computed_column": 1,
+      "create_index": 1,
+      "drop_index": 2,
+      "include": 1,
+      "statistics_io": 10
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "one year wonders"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "rowgroup"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-7_Choosing-Between-Similar-Indexes_Problem.sql' as source evidence for Design the best rowstore index for one query, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-7_Choosing-Between-Similar-Indexes_Problem.sql",
+    "line_count": 87,
+    "path": "learn_indexing_by_solving_problems/Topic-7_Choosing-Between-Similar-Indexes_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 2,
+      "drop_index": 0,
+      "include": 2,
+      "statistics_io": 2
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-7_Choosing-Between-Similar-Indexes_Solution.sql' as source evidence for Deduplicate and consolidate indexes, Index keys and INCLUDE columns, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-7_Choosing-Between-Similar-Indexes_Solution.sql",
+    "line_count": 252,
+    "path": "learn_indexing_by_solving_problems/Topic-7_Choosing-Between-Similar-Indexes_Solution.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 2,
+      "drop_index": 1,
+      "include": 2,
+      "statistics_io": 2
+    },
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "duplicate"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-8_Comparing-Plans-Between-Two-Clustered-Tables_Problem.sql' as source evidence for Deduplicate and consolidate indexes, Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-8_Comparing-Plans-Between-Two-Clustered-Tables_Problem.sql",
+    "line_count": 82,
+    "path": "learn_indexing_by_solving_problems/Topic-8_Comparing-Plans-Between-Two-Clustered-Tables_Problem.sql",
+    "signals": {
+      "computed_column": 1,
+      "create_index": 2,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Group index definitions before proposing drops; drops need broader evidence.",
+        "id": "deduplicate",
+        "label": "Deduplicate and consolidate indexes",
+        "matched_terms": [
+          "duplicate"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "rank",
+          "row_number",
+          "windowing"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-8_Comparing-Plans-Between-Two-Clustered-Tables_Solution.sql' as source evidence for Index keys and INCLUDE columns, Indexing for window functions, Partitioning and columnstore plans, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-8_Comparing-Plans-Between-Two-Clustered-Tables_Solution.sql",
+    "line_count": 351,
+    "path": "learn_indexing_by_solving_problems/Topic-8_Comparing-Plans-Between-Two-Clustered-Tables_Solution.sql",
+    "signals": {
+      "computed_column": 8,
+      "create_index": 4,
+      "drop_index": 1,
+      "include": 0,
+      "statistics_io": 4
+    },
+    "topics": [
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "included columns",
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "rank",
+          "row_number"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "sort",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Problem.sql' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Problem.sql",
+    "line_count": 30,
+    "path": "learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Setup.sql' as source evidence for GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Setup.sql",
+    "line_count": 223,
+    "path": "learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Setup.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 3,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Solution.sql' as source evidence for Indexes can slow queries down, Non-SARGable predicates, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Solution.sql",
+    "line_count": 152,
+    "path": "learn_indexing_by_solving_problems/Topic-9_Indexing-Untamed-Server_Solution.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slower"
+        ]
+      },
+      {
+        "guidance_signal": "Fix predicate shape or use computed-column strategies only when measured.",
+        "id": "sargability",
+        "label": "Non-SARGable predicates",
+        "matched_terms": [
+          "seekable"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'table_partitioning_performance/Why-Table-Partitioning-Does-Not-Speed-Up-Query-Performance_Demo.sql' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, Indexing for window functions, Partitioning and columnstore plans; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/table_partitioning_performance/Why-Table-Partitioning-Does-Not-Speed-Up-Query-Performance_Demo.sql",
+    "line_count": 763,
+    "path": "table_partitioning_performance/Why-Table-Partitioning-Does-Not-Speed-Up-Query-Performance_Demo.sql",
+    "signals": {
+      "computed_column": 15,
+      "create_index": 11,
+      "drop_index": 2,
+      "include": 4,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes",
+          "key columns"
+        ]
+      },
+      {
+        "guidance_signal": "Support PARTITION BY and ORDER BY patterns with measured rowstore or columnstore designs.",
+        "id": "windowing",
+        "label": "Indexing for window functions",
+        "matched_terms": [
+          "row_number"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "columnstore",
+          "partition",
+          "partitioned",
+          "rowgroup"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "order by",
+          "top"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'why_creating_an_index_can_slow_down_a_query/01-query-tuning-challenge-problem.sql' as source evidence for Design the best rowstore index for one query, Index keys and INCLUDE columns, Partitioning and columnstore plans, Indexes can slow queries down; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/why_creating_an_index_can_slow_down_a_query/01-query-tuning-challenge-problem.sql",
+    "line_count": 153,
+    "path": "why_creating_an_index_can_slow_down_a_query/01-query-tuning-challenge-problem.sql",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 2,
+      "drop_index": 0,
+      "include": 1,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Optimize one query by measuring logical reads and testing candidate shapes.",
+        "id": "one_best_index",
+        "label": "Design the best rowstore index for one query",
+        "matched_terms": [
+          "logical reads"
+        ]
+      },
+      {
+        "guidance_signal": "Separate seek/order keys from payload columns; INCLUDEs are useful but not free.",
+        "id": "keys_includes",
+        "label": "Index keys and INCLUDE columns",
+        "matched_terms": [
+          "includes"
+        ]
+      },
+      {
+        "guidance_signal": "Verify partition and rowgroup elimination in actual plans; do not assume it.",
+        "id": "partition_columnstore",
+        "label": "Partitioning and columnstore plans",
+        "matched_terms": [
+          "partition"
+        ]
+      },
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slower"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'why_creating_an_index_can_slow_down_a_query/02-query-tuning-challenge-solution.sql' as source evidence for Indexes can slow queries down, GROUP BY, TOP, and ORDER BY indexing; apply only after Azure SQL plan evidence confirms the pattern.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/why_creating_an_index_can_slow_down_a_query/02-query-tuning-challenge-solution.sql",
+    "line_count": 690,
+    "path": "why_creating_an_index_can_slow_down_a_query/02-query-tuning-challenge-solution.sql",
+    "signals": {
+      "computed_column": 1,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": [
+      {
+        "guidance_signal": "Adding an index can change plan choice negatively; benchmark before and after.",
+        "id": "regression",
+        "label": "Indexes can slow queries down",
+        "matched_terms": [
+          "slower"
+        ]
+      },
+      {
+        "guidance_signal": "Use key order to reduce sorts and reads for grouping, top, and ordering patterns.",
+        "id": "group_order",
+        "label": "GROUP BY, TOP, and ORDER BY indexing",
+        "matched_terms": [
+          "group by",
+          "order by"
+        ]
+      }
+    ]
+  },
+  {
+    "derived_digest": "Use 'why_creating_an_index_can_slow_down_a_query/actual-plan-after-adding-index.sqlplan' as source context; review manually before turning it into indexing guidance.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/why_creating_an_index_can_slow_down_a_query/actual-plan-after-adding-index.sqlplan",
+    "line_count": 457,
+    "path": "why_creating_an_index_can_slow_down_a_query/actual-plan-after-adding-index.sqlplan",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": []
+  },
+  {
+    "derived_digest": "Use 'why_creating_an_index_can_slow_down_a_query/actual-plan-before-adding-index.sqlplan' as source context; review manually before turning it into indexing guidance.",
+    "github_url": "https://github.com/LitKnd/SQLWorkbooks/blob/main/why_creating_an_index_can_slow_down_a_query/actual-plan-before-adding-index.sqlplan",
+    "line_count": 589,
+    "path": "why_creating_an_index_can_slow_down_a_query/actual-plan-before-adding-index.sqlplan",
+    "signals": {
+      "computed_column": 0,
+      "create_index": 0,
+      "drop_index": 0,
+      "include": 0,
+      "statistics_io": 0
+    },
+    "topics": []
+  }
+]

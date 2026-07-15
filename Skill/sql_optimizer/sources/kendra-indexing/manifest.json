@@ -1,0 +1,112 @@
+{
+  "counts": {
+    "errors": 0,
+    "lesson_urls": 52,
+    "sqlworkbooks_files_analyzed": 33,
+    "topic_courses": 7,
+    "web_pages_analyzed": 59
+  },
+  "courses": [
+    {
+      "title": "Index Design SQLChallenge - One Year Wonders (50 minutes)",
+      "url": "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/"
+    },
+    {
+      "title": "How Index Keys and Includes Work (1 hour)",
+      "url": "https://kendralittle.com/course/how-index-key-and-included-columns-work/"
+    },
+    {
+      "title": "Indexing for Windowing Functions (45 minutes)",
+      "url": "https://kendralittle.com/course/indexing-for-windowing-functions/"
+    },
+    {
+      "title": "Learn Indexing by Solving Problems (7 hours 23 minutes)",
+      "url": "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/"
+    },
+    {
+      "title": "Deduplicate Indexes - Level 1 SQLChallenge (56 minutes)",
+      "url": "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/"
+    },
+    {
+      "title": "Execution Plans: Partitioned Tables and Columnstore Indexes (1 hour 30 minutes)",
+      "url": "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/"
+    },
+    {
+      "title": "Why Creating an Index Can Slow Down a Query (1 hour 30 minutes)",
+      "url": "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/"
+    }
+  ],
+  "errors": [],
+  "generated_at": "2026-07-01T00:07:50Z",
+  "lesson_urls": [
+    "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/explore-the-index-pages-and-their-links/",
+    "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/level-2-sample-solutions-for-indexing-one-year-wonders-23-minutes/",
+    "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/meet-your-indexing-sqlchallenge-7-minutes/",
+    "https://kendralittle.com/course/design-the-best-index-for-one-year-wonders-sqlchallenge/sample-solutions-for-indexing-one-year-wonders-webinar-recording/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/create-a-test-index-and-discover-its-structure/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/get-ready-to-dive-into-indexing/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/index-structure-illustrated/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/seeks-and-scans-illustrated/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/three-question-video-quiz/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/trace-buffer-latches-on-seeks-and-scans/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/update-an-important-key-value/",
+    "https://kendralittle.com/course/how-index-key-and-included-columns-work/your-final/",
+    "https://kendralittle.com/course/indexing-for-windowing-functions/bring-in-the-nonclustered-columnstore-index/",
+    "https://kendralittle.com/course/indexing-for-windowing-functions/dig-into-the-plan-and-test-a-nonclustered-index/",
+    "https://kendralittle.com/course/indexing-for-windowing-functions/hacking-in-the-window-aggregate-operator-with-a-rowstore-nonclustered-index/",
+    "https://kendralittle.com/course/indexing-for-windowing-functions/meet-the-challenge-code/",
+    "https://kendralittle.com/course/indexing-for-windowing-functions/summary-and-recap/",
+    "https://kendralittle.com/course/indexing-for-windowing-functions/what-can-an-indexed-view-do/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/keys-vs-includes-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/links-we-discussed-in-class/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/nonclustered-key-choice-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-4-indexing-top-order-by-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-5-indexing-a-non-sargable-column-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-6-indexing-for-group-by-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-7-choosing-between-similar-indexes-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-8-comparing-plans-between-two-clustered-tables-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/topic-9-indexing-an-untamed-server-session-recording/",
+    "https://kendralittle.com/course/learn-indexing-by-solving-problems-sql-seminar-june-2018/welcome-our-mission-some-logistics/",
+    "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/analysis-and-deduplication/",
+    "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/deduplicate-indexes-sample-solutions-script-and-video/",
+    "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/grouping-the-indexes-for-analysis/",
+    "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/summing-up-and-looking-ahead/",
+    "https://kendralittle.com/course/sqlchallenge-deduplicate-indexes-level-1/your-sqlchallenge-deduplicate-indexes/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/batch-mode-hacks-and-what-does-the-future-hold/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/columnstore-0-partitions-accessed-but-rowgroup-elimination/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/disk-based-rowstore-actual-plans-cached-plans-and-query-store/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/highlights-of-what-we-covered-in-this-course/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/more-fun-with-rowgroup-elimination-and-predicate-pushdown/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/partitioning-and-columnstore-concepts/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/quiz-time/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/when-doing-more-is-less-work-comparing-query-time-stats-for-two-queries/",
+    "https://kendralittle.com/course/the-weird-wonderful-world-of-execution-plans-partitioned-tables-columnstore-indexes/when-you-can-get-batch-mode-operators-and-an-example-of-their-power-14-minutes/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/course-quiz/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/explore-the-slow-querys-execution-plan-15-minutes/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/solutions-using-dynamic-sql/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/solutions-with-index-hints-and-local-variables-13-minutes/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/step-through-your-problem-query/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/tsql-rewrites-that-do-not-fix-the-problem/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/using-a-temp-table-as-a-fake-variable/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/which-solution-is-best-3-minutes/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/why-did-the-query-slow-down/",
+    "https://kendralittle.com/course/why-creating-an-index-can-make-a-query-slower/why-is-this-a-problem/"
+  ],
+  "source_scope": {
+    "kendra_sitemap": "https://kendralittle.com/sitemap.xml",
+    "kendra_topic_url": "https://kendralittle.com/topics/index-design-and-tuning/",
+    "method": "topic page courses plus sitemap lessons plus cloned SQLWorkbooks script scan",
+    "sqlworkbooks": "https://github.com/LitKnd/SQLWorkbooks",
+    "sqlworkbooks_commit": "ba4a01854e5a1dead646fe6882d839007a60444f"
+  },
+  "topic_counts": {
+    "deduplicate": 8,
+    "group_order": 64,
+    "keys_includes": 30,
+    "one_best_index": 20,
+    "partition_columnstore": 30,
+    "regression": 11,
+    "sargability": 7,
+    "windowing": 14
+  }
+}

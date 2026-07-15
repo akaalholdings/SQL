@@ -60,3 +60,36 @@ def test_wrong_type_fails(field, bad_value):
 
 def test_non_object_record_fails():
     assert validate(["not", "an", "object"])
+
+
+def test_improved_requires_equivalence_and_finite_metrics():
+    record = copy.deepcopy(VALID)
+    record["equivalence_proven"] = False
+    record["improvement"]["duration_pct"] = float("nan")
+    problems = validate(record)
+    assert any("equivalence_proven" in problem for problem in problems)
+    assert any("finite number" in problem for problem in problems)
+
+
+def test_counts_hash_timestamp_and_detail_path_are_strict():
+    record = copy.deepcopy(VALID)
+    record["index_changes"]["adds"] = True
+    record["query_hash"] = "not-a-hash"
+    record["timestamp"] = "yesterday"
+    record["detail_file"] = "../outside.md"
+    problems = validate(record)
+    assert any("non-negative integer" in problem for problem in problems)
+    assert any("query_hash" in problem for problem in problems)
+    assert any("timestamp" in problem for problem in problems)
+    assert any("detail_file" in problem for problem in problems)
+
+
+def test_metrics_index_shape_and_detail_identity_are_strict():
+    record = copy.deepcopy(VALID)
+    del record["index_changes"]["drops"]
+    record["metrics"]["baseline"] = {"duration_ms": float("inf")}
+    record["detail_file"] = "runs/some-other-record.md"
+    problems = validate(record)
+    assert any("index_changes.drops is required" in problem for problem in problems)
+    assert any("finite numbers" in problem for problem in problems)
+    assert any("match the record id" in problem for problem in problems)

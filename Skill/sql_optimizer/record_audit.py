@@ -10,12 +10,14 @@ The optimizing agent writes a run document to ``/tmp/audit.json`` (same pattern 
 This script derives ``id`` / ``query_hash`` / ``timestamp``, assembles the compact
 index record, validates it against the corpus contract (``validate_audit.py``),
 appends one line to ``audits/index.jsonl`` and writes the full detail file
-``audits/runs/<id>.md`` (which holds the RAW SQL).
+``audits/runs/<id>.md``. Raw SQL is redacted by default; set
+``SQL_OPTIMIZER_AUDIT_FULL_SQL=1`` before recording to persist verbatim SQL.
 
 Audit dir resolution (override wins):
     1. ``$SQL_OPTIMIZER_AUDIT_DIR``
-    2. ``~/.copilot/skills/sql_optimizer/audits`` (the installed location both the
-       running skill and the dev-repo review pass can resolve)
+    2. ``~/.copilot/skills/sql_optimizer/audits`` — legacy location, used only when it
+       already exists (so an established corpus keeps growing after a host switch)
+    3. ``~/.sql-skills/sql_optimizer/audits`` — host-neutral default
 """
 
 from __future__ import annotations
@@ -29,14 +31,20 @@ import secrets
 import sys
 from datetime import datetime, timezone
 
+from optimizer_storage import (
+    append_text_line,
+    atomic_write_text,
+    ensure_private_dir,
+    exclusive_lock,
+    secure_file,
+)
 from validate_audit import OUTCOMES, validate
 
 # Fields copied verbatim from the run document into the compact index record.
 _LIST_FIELDS = ("tables", "anti_patterns", "rules_applied", "guidance_gaps")
-_DICT_FIELDS = ("index_changes", "metrics", "improvement")
 
 _GITIGNORE = """\
-# Audit corpus — may contain RAW SQL. Never commit.
+# Audit corpus — may contain sensitive SQL. Never commit.
 *
 !.gitignore
 !README.md
@@ -45,9 +53,10 @@ _GITIGNORE = """\
 _README = """\
 # sql_optimizer audit corpus
 
-Written by `record_audit.py` after each optimization run. **These files contain
-raw SQL** (original query, rewrite, and generated scripts) exactly as supplied —
-secure and back up this directory accordingly; do not commit it.
+Written by `record_audit.py` after each optimization run. Raw SQL is redacted by
+default. If `SQL_OPTIMIZER_AUDIT_FULL_SQL=1` was set for a run, the detail file
+contains raw SQL exactly as supplied. Secure and back up this directory
+accordingly; do not commit it.
 
 Layout:
 
@@ -65,7 +74,10 @@ def audit_dir() -> pathlib.Path:
     override = os.environ.get("SQL_OPTIMIZER_AUDIT_DIR")
     if override:
         return pathlib.Path(override).expanduser()
-    return pathlib.Path.home() / ".copilot" / "skills" / "sql_optimizer" / "audits"
+    legacy = pathlib.Path.home() / ".copilot" / "skills" / "sql_optimizer" / "audits"
+    if legacy.exists():
+        return legacy  # keep an established corpus growing after a host switch
+    return pathlib.Path.home() / ".sql-skills" / "sql_optimizer" / "audits"
 
 
 def audit_enabled() -> bool:
@@ -75,6 +87,16 @@ def audit_enabled() -> bool:
         "false",
         "off",
         "no",
+    }
+
+
+def full_sql_enabled() -> bool:
+    """Raw SQL persistence is opt-in; default audit details are redacted."""
+    return os.environ.get("SQL_OPTIMIZER_AUDIT_FULL_SQL", "0").strip().lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
     }
 
 
@@ -110,17 +132,19 @@ def build_record(run: dict, *, now: datetime | None = None, nonce: str | None = 
         "id": record_id,
         "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "query_hash": qhash,
-        "environment": str(run.get("environment", "unknown")),
-        "equivalence_proven": bool(run.get("equivalence_proven", False)),
+        "environment": run.get("environment", "unknown"),
+        "equivalence_proven": run.get("equivalence_proven", False),
         "outcome": outcome,
         "detail_file": f"runs/{record_id}.md",
     }
     for field in _LIST_FIELDS:
-        value = run.get(field, [])
-        record[field] = [str(item) for item in value] if isinstance(value, list) else []
-    for field in _DICT_FIELDS:
-        value = run.get(field, {})
-        record[field] = value if isinstance(value, dict) else {}
+        record[field] = run.get(field, [])
+    record["index_changes"] = run.get(
+        "index_changes",
+        {"adds": 0, "drops": 0, "alters": 0},
+    )
+    for field in ("metrics", "improvement"):
+        record[field] = run.get(field, {})
     return record
 
 
@@ -131,6 +155,19 @@ def _fenced(label: str, body: object, lang: str = "sql") -> str:
     return f"## {label}\n\n```{lang}\n{text.rstrip()}\n```\n"
 
 
+def _sql_fenced(label: str, body: object, *, include_full_sql: bool) -> str:
+    text = body if isinstance(body, str) else ""
+    if not text.strip():
+        return f"## {label}\n\n_None recorded._\n"
+    if include_full_sql:
+        return _fenced(f"{label} (raw)", text)
+    return (
+        f"## {label} (redacted)\n\n"
+        "_SQL redacted by default. Set `SQL_OPTIMIZER_AUDIT_FULL_SQL=1` before "
+        "recording to persist raw SQL for future audit review._\n"
+    )
+
+
 def _bullets(label: str, items: object) -> str:
     if not isinstance(items, list) or not items:
         return f"## {label}\n\n_None recorded._\n"
@@ -139,17 +176,19 @@ def _bullets(label: str, items: object) -> str:
 
 
 def render_detail(record: dict, run: dict) -> str:
-    """Full per-run markdown: frontmatter mirrors the index record, body holds raw SQL."""
+    """Full per-run markdown: frontmatter mirrors the index record, body holds safe details."""
     frontmatter = json.dumps(record, indent=2, ensure_ascii=False)
     scripts = run.get("scripts") if isinstance(run.get("scripts"), dict) else {}
+    include_full_sql = full_sql_enabled()
     sections = [
         f"---\n{frontmatter}\n---\n",
         f"# Optimization audit `{record['id']}`\n",
-        _fenced("Original query (raw)", run.get("query")),
-        _fenced("Optimized query (raw)", run.get("rewrite")),
-        _fenced("Index script", scripts.get("index")),
-        _fenced("Rollback script", scripts.get("rollback")),
-        _fenced("Deploy script", scripts.get("deploy")),
+        _fenced("Audit SQL persistence", "raw SQL persisted" if include_full_sql else "raw SQL redacted", lang="text"),
+        _sql_fenced("Original query", run.get("query"), include_full_sql=include_full_sql),
+        _sql_fenced("Optimized query", run.get("rewrite"), include_full_sql=include_full_sql),
+        _sql_fenced("Index script", scripts.get("index"), include_full_sql=include_full_sql),
+        _sql_fenced("Rollback script", scripts.get("rollback"), include_full_sql=include_full_sql),
+        _sql_fenced("Deploy script", scripts.get("deploy"), include_full_sql=include_full_sql),
         _fenced("Plan findings", run.get("plan_findings"), lang="text"),
         _fenced("Three-scenario metrics", json.dumps(record["metrics"], indent=2), lang="json"),
         _fenced("Improvement vs baseline", json.dumps(record["improvement"], indent=2), lang="json"),
@@ -161,14 +200,19 @@ def render_detail(record: dict, run: dict) -> str:
 
 
 def ensure_corpus(root: pathlib.Path) -> None:
-    (root / "runs").mkdir(parents=True, exist_ok=True)
-    (root / "reports").mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(root)
+    ensure_private_dir(root / "runs")
+    ensure_private_dir(root / "reports")
     gitignore = root / ".gitignore"
     if not gitignore.exists():
-        gitignore.write_text(_GITIGNORE, encoding="utf-8")
+        atomic_write_text(gitignore, _GITIGNORE)
+    else:
+        secure_file(gitignore)
     readme = root / "README.md"
     if not readme.exists():
-        readme.write_text(_README, encoding="utf-8")
+        atomic_write_text(readme, _README)
+    else:
+        secure_file(readme)
 
 
 def write_audit(run: dict, root: pathlib.Path | None = None) -> dict:
@@ -180,10 +224,13 @@ def write_audit(run: dict, root: pathlib.Path | None = None) -> dict:
     if problems:
         raise ValueError("assembled audit record is invalid: " + "; ".join(problems))
 
-    ensure_corpus(root)
-    (root / record["detail_file"]).write_text(render_detail(record, run), encoding="utf-8")
-    with (root / "index.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    with exclusive_lock(root):
+        ensure_corpus(root)
+        atomic_write_text(root / record["detail_file"], render_detail(record, run))
+        append_text_line(
+            root / "index.jsonl",
+            json.dumps(record, ensure_ascii=False) + "\n",
+        )
     return record
 
 
@@ -201,10 +248,14 @@ def main(argv: list[str]) -> int:
         print("audit logging disabled (SQL_OPTIMIZER_AUDIT) — nothing recorded")
         return 0
 
-    raw = sys.stdin.read() if args.input == "-" else pathlib.Path(args.input).read_text("utf-8")
     try:
+        raw = (
+            sys.stdin.read()
+            if args.input == "-"
+            else pathlib.Path(args.input).read_text("utf-8")
+        )
         run = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         print(f"could not parse run document: {exc}", file=sys.stderr)
         return 1
 
@@ -215,7 +266,11 @@ def main(argv: list[str]) -> int:
         print(f"audit not recorded: {exc}", file=sys.stderr)
         return 1
 
-    print(f"recorded audit {record['id']} ({record['outcome']}) -> {record['detail_file']}")
+    mode = "raw SQL" if full_sql_enabled() else "redacted SQL"
+    print(
+        f"recorded audit {record['id']} ({record['outcome']}, {mode}) -> "
+        f"{record['detail_file']}"
+    )
     return 0
 
 

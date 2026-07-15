@@ -41,7 +41,29 @@ guide, but every change is a suggestion for the user to accept or reject. Do not
   - the audit `id`s that motivate it (evidence).
 - **Equivalence-failure patterns** — rewrites that changed results. Surface the shared cause so a
   guard can be proposed for `queryguide.md`.
-- **Suggested new `Examples.md` cases** — distinct, instructive runs worth turning into a worked example.
+- **Suggested new `Examples.md` cases** — distinct, instructive runs worth turning into a worked example, prepared per "Promoting field examples" below.
+
+## Promoting field examples
+
+Real before/afters from the audit corpus become the "Field examples" section of `Examples.md` — measured numbers instead of illustrative ones. This is a **proposal** like everything else in this pass: prepare the candidate in the report; the user approves the edit.
+
+**Prerequisite.** Promotion needs the raw SQL, which the corpus only holds when runs were recorded with `SQL_OPTIMIZER_AUDIT_FULL_SQL=1` (see `AuditGuide.md` Privacy). A redacted corpus can still *identify* promotion candidates by rule/metrics, but the example must then be reconstructed with the user, not from the corpus.
+
+**Selection criteria** — an example earns a slot only when it teaches something the synthetic examples (Rules 1–16 shapes) don't:
+
+- **Recurrence**: the same anti-pattern fired across 3+ distinct queries (the summary's top anti-patterns / repeated queries).
+- **Negatives outrank wins**: an `equivalence_failed` or `regressed` run — a rewrite that looked right and changed results or made things worse — is the most instructive artifact the corpus produces. Prefer one real failure over several routine wins.
+- **Surprise**: a rule interaction, plan behavior, or measured outcome that contradicts the guide's default expectation.
+- Routine wins that a synthetic example already covers do not qualify, however large the improvement.
+
+**Anonymization — mandatory, no exceptions.** `Examples.md` is shipped, installed content; the corpus is sensitive and gitignored. Before anything leaves the corpus:
+
+- Rename every object to the neutral example domain (`dbo.orders`, `dbo.customers`, ...), preserving the *shape* exactly — same column count, same join topology, same predicate structure, same data types.
+- Strip or neutralize every literal that could identify a business, person, product, or environment; parameter names become generic (`@customer_id`, `@order_date_from`).
+- Keep the measured numbers verbatim (durations, reads, row counts, medians) — they are the value of a field example and identify nothing.
+- The finished example must read like the synthetic ones; if the shape cannot be preserved through renaming, it does not get promoted.
+
+**Format and cap.** Each field example follows the compact Rules 11–16 example shape, plus one line naming the corpus run id (e.g. `Promoted from audit run 20260815T…`) and the real results-matrix row (median, min/max). The section holds **at most 5** examples — `Examples.md` is loaded on every run, so each slot costs context. When the section is full, a new candidate must displace the weakest current one (state which and why in the report).
 
 ## Boundaries
 

@@ -1,0 +1,43 @@
+name: SQL skill safety
+
+on:
+  pull_request:
+    paths:
+      - "Skill/**"
+      - ".github/workflows/sql-skills.yml"
+  push:
+    paths:
+      - "Skill/**"
+      - ".github/workflows/sql-skills.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reject local or credential-bearing artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden=$(git ls-files | grep -Ei '(^|/)(\.env($|\.)|credentials?($|\.)|secrets?($|\.)|id_(rsa|dsa|ecdsa|ed25519)($|\.)|[^/]+\.(pem|key|p12|pfx|ppk)$|\.claude/|__pycache__/|\.pytest_cache/|\.DS_Store$)' | grep -vE '(^|/)\.env\.example$' || true)
+          if [[ -n "$forbidden" ]]; then
+            printf '%s\n' "$forbidden"
+            exit 1
+          fi
+      - name: Install verification tools
+        run: python -m pip install --disable-pip-version-check pytest ruff
+      - name: Run SQL skill tests
+        working-directory: Skill
+        run: python -m pytest -q sql_optimizer/tests sql_plan_enforcer/tests sql_health_triage/tests tests
+      - name: Compile runtime helpers
+        working-directory: Skill
+        run: python -m compileall -q sql_optimizer sql_plan_enforcer sql_health_triage install_all.py check_installed_parity.py
+      - name: Lint runtime helpers and tests
+        run: python -m ruff check Skill

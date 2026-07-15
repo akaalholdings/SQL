@@ -6,20 +6,34 @@ Review mode ignores the apply gate entirely because it never applies. It does no
 
 ## Workflow
 
-1. **Scan (read-only)** — run the four scans from `ScanGuide.md` **plus** the failing-forced-plan detector below, all through `query_geneva_db <env> --dba --query-file ... --format json`. Use `mid` (read-only replica) for evidence.
-2. **Rank** — merge the rows and run `scan_rank.py` (this annotates `eligible` / `score` / `reason`; review mode keeps ineligible rows too, as monitoring-only items).
+1. **Scan (read-only)** — run the primary-path server tools from `ScanGuide.md` (`detect_regressed_queries`, `get_top_queries`, `detect_parameter_sniffing`, `get_forced_plans`) **plus** the failing-forced-plan detector below through `execute_sql`. Call `list_databases` and pick the workload database.
+2. **Adapt + merge + rank** — pipe the four tool payloads through `scan_adapter.py`, append the detector's `rows` (already in candidate schema), then `scan_rank.py` annotates `eligible` / `score` / `reason` (review keeps ineligible rows too, as monitoring-only items).
 3. **Report** — pipe the ranked candidates to `review_report.py`:
 
+Fast path: call `plan_health_review(window_minutes=1440, top_n=20, database_name=<workload db>)`
+first. It returns Query Store status, parameter-sensitivity evidence, forced-plan health, and ranked
+force/unforce candidates without applying anything. Use the fallback scan SQL in `ScanGuide.md` when
+you need to inspect or customize the underlying queries (or when `detect_regressed_queries` is empty).
+
+   ```
+   # the four server tools (payloads to /tmp/*.json), plus the detector:
+   execute_sql(sql=<contents of scan_unforce_failed.sql>, database_name=<workload db>)
+   ```
+
    ```bash
+   # adapt tool payloads, merge with detector rows -> rank -> report
+   python3 scan_adapter.py --input /tmp/reg.json --input /tmp/top.json \
+       --input /tmp/sniff.json --input /tmp/forced.json > /tmp/candidates.json
+   # (append the detector rows to the candidates list, then:)
    python3 scan_rank.py --input /tmp/candidates.json | python3 review_report.py
-   python3 review_report.py --input /tmp/ranked.json --json   # machine-readable
+   # add --json to review_report.py for machine-readable output
    ```
 
    The report groups issues by severity (failing forced plans = **critical**, regressions = **high**, parameter-sensitive / beaten forced plans = **medium**, top consumers = **low**) and shows the action enforce mode would take — without taking it.
 
 ## Failing forced plans (unforce-failed detector)
 
-A forced plan with `force_failure_count > 0` is **actively broken**: SQL Server cannot apply the forced plan, which can cause general failure and slower compile times. This detector finds them and surfaces the exact unforce command.
+A forced plan with `force_failure_count > 0` is **actively broken**: the engine cannot apply the forced plan, which can cause general failure and slower compile times. This detector finds them and surfaces the exact unforce command.
 
 Adapted for **Azure SQL Database (single database)** from Kendra Little's `dba_QueryStoreUnforceFailed.sql`:
 <https://github.com/LitKnd/FreeSQLServerScripts/blob/main/queryStore/dba_QueryStoreUnforceFailed.sql>

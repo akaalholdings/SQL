@@ -8,6 +8,7 @@ from scan_rank import Thresholds, normalize, rank, total_cost
 def regression(query_id, reg_pct, execs=500, dur=5000):
     return {
         "category": "regression",
+        "environment": "awlt_prod",
         "query_id": query_id,
         "count_executions": execs,
         "avg_duration": dur,
@@ -19,6 +20,7 @@ def regression(query_id, reg_pct, execs=500, dur=5000):
 def top_consumer(query_id, execs=10000, dur=8000):
     return {
         "category": "top_consumer",
+        "environment": "awlt_prod",
         "query_id": query_id,
         "count_executions": execs,
         "avg_duration": dur,
@@ -28,6 +30,7 @@ def top_consumer(query_id, execs=10000, dur=8000):
 def param_sensitive(query_id, dur=4000, stdev=4000, execs=500):
     return {
         "category": "param_sensitive",
+        "environment": "awlt_prod",
         "query_id": query_id,
         "count_executions": execs,
         "avg_duration": dur,
@@ -38,7 +41,9 @@ def param_sensitive(query_id, dur=4000, stdev=4000, execs=500):
 def stale_forced(query_id, failures=0, execs=500, dur=3000):
     return {
         "category": "stale_forced",
+        "environment": "awlt_prod",
         "query_id": query_id,
+        "current_plan_id": 20 + query_id,
         "count_executions": execs,
         "avg_duration": dur,
         "force_failure_count": failures,
@@ -100,7 +105,7 @@ def test_default_levers_by_category():
 
 
 def test_top_consumer_without_alternate_plan_hands_off_to_optimizer():
-    candidate = {"category": "top_consumer", "query_id": 9, "count_executions": 9000,
+    candidate = {"category": "top_consumer", "environment": "awlt_prod", "query_id": 9, "count_executions": 9000,
                  "avg_duration": 5000}
     assert normalize(candidate)["proposed_lever"] == "handoff_optimizer"
 
@@ -108,6 +113,17 @@ def test_top_consumer_without_alternate_plan_hands_off_to_optimizer():
 def test_unknown_category_is_ineligible():
     ranked = rank([{"category": "mystery", "query_id": 1}])
     assert ranked[0]["eligible"] is False
+
+
+def test_invalid_identity_plan_and_nested_truncation_are_ineligible():
+    assert rank([top_consumer(0)])[0]["eligible"] is False
+    no_plan = regression(1, 2.0)
+    no_plan.pop("proposed_plan_id")
+    assert "proposed_plan_id" in rank([no_plan])[0]["reason"]
+    nested = top_consumer(2)
+    nested["evidence"] = {"pages": [{"truncated": True}]}
+    assert rank([nested])[0]["eligible"] is False
+    assert rank(["not-an-object"])[0]["eligible"] is False
 
 
 def test_thresholds_are_tunable():

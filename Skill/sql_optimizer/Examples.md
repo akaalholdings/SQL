@@ -1,6 +1,6 @@
 # Worked Example — Response Format Reference
 
-This file demonstrates the response formats defined in the main instructions. Mirror the relevant structure: the first example shows the fallback when **no execution plan is supplied**; the second example shows the preferred Shell workflow when the user supplies a query plus actual execution plan XML.
+This file demonstrates the response formats defined in the main instructions. Mirror the relevant structure: the first example shows the fallback when **no execution plan is supplied**; the second example shows the preferred live-database workflow when the user supplies a query plus actual execution plan XML. A third section gives compact rewrite-pattern examples for `queryguide.md` Rules 11–16 — a real run still executes the full three-scenario benchmark and result-equivalence proof per `RunGuide.md`; those sections are omitted there for brevity.
 
 Note: the user's identifier names (PascalCase here) are always preserved — StyleGuide naming conventions apply only to new code you author.
 
@@ -101,7 +101,7 @@ No execution plan or existing index definitions were provided, so this recommend
 
 ---
 
-## Plan-based Shell example
+## Plan-based live-database example
 
 ## User input
 
@@ -147,16 +147,16 @@ The user also supplies the actual execution plan XML. The XML shows:
 
 **Environment for validation**
 
-Before direct database validation, choose the Shell environment: `mid` (production `mid` on the analytics server, read-only prod replica), `mid_prod` (primary production maintenance only after explicit approval), `mid_preprod` (preprod), `mid_test` (test), `mid_dev` (dev alias targeting database `mid_Dev`), or `mid_sandbox` (sandbox). If you do not specify one, I will use `mid` for read-only evidence gathering and state that assumption.
+Before direct database validation, call `list_databases` and ask which configured database to target — there is no fixed alias list; the available databases are whatever the running `azure-sql-mcp` server's `AZURE_SQL_ALLOWED_DATABASES` configures. If you do not specify one, I will ask rather than assume a default.
 
-For direct read-only inspection/validation, use `query_geneva_db` after the environment is chosen:
+For direct read-only inspection/validation, use `azure-sql-mcp` after the database is chosen:
 
-```bash
-query_geneva_db mid --dba --index-inventory dbo.Shipments --format json
-query_geneva_db mid --dba --tune-capture --query-file /tmp/shipments_baseline.sql --max-rows 100 --format json
+```
+get_object_details(schema_name="dbo", object_name="Shipments", object_type="table")
+explain_query(sql=<contents of shipments_baseline.sql>, analyze=true)
 ```
 
-`query_geneva_db` is for this query's evidence: direct database reads, metadata/index inspection, actual-plan capture, benchmarking, and result-validation queries. Do not use it to run the index DDL below unless the user explicitly approves execution in the chosen writable environment.
+`azure-sql-mcp` is for this query's evidence: direct database reads, metadata/index inspection, actual-plan capture, benchmarking, and result-validation queries. `execute_sql`/`explain_query` are always read-only; the test-index DDL below runs through the gated `create_test_index`/`drop_test_index` tools after approval (see `RunGuide.md` step 4).
 
 **Plan findings**
 
@@ -247,27 +247,33 @@ Same `@ShipDate` and parameter values across all three runs. Row count is identi
 
 How each scenario was run:
 
-1. **Baseline** — read-only on `mid`. Captured the actual plan, duration, CPU, logical reads, row count, spills, memory grant, and lookup executions.
-   ```bash
-   query_geneva_db mid --dba --tune-capture --query-file /tmp/shipments_baseline.sql --max-rows 100 --format json
+1. **Baseline** — read-only, on the chosen database. Captured the actual plan, duration, CPU, logical reads, row count, spills, memory grant, and lookup executions.
+   ```
+   explain_query(sql=<contents of shipments_baseline.sql>, analyze=true)
+   execute_sql(sql=<contents of shipments_baseline.sql>)
    ```
 
-2. **Optimized** — read-only on `mid`, no new indexes. The SARGable range cut reads, but without a covering index the key lookup remains. `--benchmark` fetches both result sets into memory, so `--max-rows` is bounded here; exact equivalence is proven server-side below.
-   ```bash
-   query_geneva_db mid --dba --benchmark --query-file /tmp/shipments_baseline.sql --query-file2 /tmp/shipments_optimized.sql --max-rows 100 --format json
+2. **Optimized** — read-only, same database, no new indexes. The SARGable range cut reads, but without a covering index the key lookup remains; exact equivalence is proven server-side below.
+   ```
+   explain_query(sql=<contents of shipments_optimized.sql>, analyze=true)
+   execute_sql(sql=<contents of shipments_optimized.sql>)
    ```
 
-3. **Optimized + indexes** — writable env (`mid_dev`) **after explicit DDL approval**. Index DDL goes through the single-statement DBA maintenance path, not `--benchmark` (which only runs read-only `SELECT`s): create the test-prefixed covering index (`IX_Testing_BS_Shipments_ShipDate_StatusCode_a1b2c3d4`), capture the optimized query with it present, then drop it. The plan collapsed to a single seek with no key lookup.
-   ```bash
-   # create (single DDL statement)
-   query_geneva_db mid_dev --dba --query-file /tmp/shipments_create_index.sql --format json
+3. **Optimized + indexes** — after DDL approval, via the gated test-index tools (`RunGuide.md` step 4). The plan collapsed to a single seek with no key lookup.
+   ```
+   # create (tool enforces the IX_Testing_ prefix; response carries the rollback DROP)
+   create_test_index(schema_name="dbo", table_name="Shipments",
+                     index_name="IX_Testing_BS_Shipments_ShipDate_StatusCode_a1b2c3d4",
+                     key_columns=["ShipDate", "StatusCode"], include_columns=["CustomerID", "TotalDue"],
+                     dry_run=false)
    # capture the optimized query with the index present
-   query_geneva_db mid_dev --dba --tune-capture --query-file /tmp/shipments_optimized.sql --max-rows 100 --format json
-   # drop (rollback, single DDL statement)
-   query_geneva_db mid_dev --dba --query-file /tmp/shipments_drop_index.sql --format json
+   explain_query(sql=<contents of shipments_optimized.sql>, analyze=true)
+   # drop (rollback)
+   drop_test_index(schema_name="dbo", table_name="Shipments",
+                   index_name="IX_Testing_BS_Shipments_ShipDate_StatusCode_a1b2c3d4", dry_run=false)
    ```
 
-**Result equivalence** — both `EXCEPT` directions returned zero rows (duplicate-sensitive; add row numbering over all projected columns when duplicates are possible). Drop `ORDER BY` for the set comparison itself.
+**Result equivalence** — run through `execute_sql` as a single statement (CTEs are fully supported); both `EXCEPT` directions returned zero rows (duplicate-sensitive; add row numbering over all projected columns when duplicates are possible). Drop `ORDER BY` for the set comparison itself.
 
 ```sql
 WITH baseline_result AS
@@ -303,5 +309,440 @@ FROM baseline_result;
 
 **Azure SQL Database notes**
 
-- Validate read-only evidence in `mid` by default unless you choose another Shell environment. Use `mid_dev` as the default writable DDL-test target only after explicit approval.
-- Generated DDL is a script, not an instruction to execute automatically. Apply it only after approval in the chosen environment.
+- Validate read-only evidence on whichever database you choose via `list_databases` — there is no default; ask if unspecified. Test-index DDL runs through `create_test_index`/`drop_test_index` with explicit approval (standing approval on a sandbox clone — `SandboxGuide.md`).
+- Production deployment DDL remains a script for the user; only disposable test-prefixed indexes are ever tool-executed, and every create carries its rollback DROP (`RunGuide.md` step 4).
+
+## Rewrite-pattern examples (Rules 11–16)
+
+Compact examples for the `queryguide.md` §1.2 rewrite rules 11–16. Each shows the anti-pattern, the rewrite, and the load-bearing caveats. A real run still executes the full three-scenario benchmark and proves result equivalence per `RunGuide.md` — those sections are omitted here for brevity, never in practice.
+
+### Rule 11 — kitchen-sink optional parameters
+
+**User input** (plan symptom: clustered index scan and ~30%-of-table estimates regardless of which parameters are supplied)
+
+```sql
+SELECT o.order_id, o.order_date, o.total_due, o.status_code
+FROM dbo.orders AS o
+WHERE (@customer_id IS NULL OR o.customer_id = @customer_id)
+AND (@status_code IS NULL OR o.status_code = @status_code)
+AND (@order_date_from IS NULL OR o.order_date >= @order_date_from);
+```
+
+**Expected response**
+
+**Schema check:** `dbo.orders` qualified; preserved as written.
+
+**Plan findings**
+
+- One cached plan serves all 8 filter combinations: the optimizer compiled a defensive scan because no single plan can seek `customer_id` when supplied and skip it when NULL.
+- Estimates reflect the density average, not the actual filter combination — wrong for almost every execution.
+
+**Optimized query** (low-frequency path — semantics identical; NULL branches fold away at compile time)
+
+```sql
+SELECT
+    o.order_id,
+    o.order_date,
+    o.total_due,
+    o.status_code
+FROM dbo.orders AS o
+WHERE (@customer_id IS NULL OR o.customer_id = @customer_id)
+AND   (@status_code IS NULL OR o.status_code = @status_code)
+AND   (@order_date_from IS NULL OR o.order_date >= @order_date_from)
+OPTION (RECOMPILE);
+```
+
+**What changed and why**
+
+- `OPTION (RECOMPILE)` compiles a plan for exactly the predicates present each execution (Rule 11). Cost: compile CPU per execution — stated per §3.1 hint governance.
+
+*Optional changes (not applied — please confirm):*
+
+- Hot-path form: parameterized dynamic SQL appending only present predicates (Rule 9 discipline — values always as parameters):
+
+```sql
+DECLARE
+    @sql nvarchar(max) = N'
+SELECT
+    o.order_id,
+    o.order_date,
+    o.total_due,
+    o.status_code
+FROM dbo.orders AS o
+WHERE 1 = 1';
+
+IF @customer_id IS NOT NULL
+BEGIN
+    SET @sql += N'
+AND   o.customer_id = @customer_id';
+END;
+
+IF @status_code IS NOT NULL
+BEGIN
+    SET @sql += N'
+AND   o.status_code = @status_code';
+END;
+
+IF @order_date_from IS NOT NULL
+BEGIN
+    SET @sql += N'
+AND   o.order_date >= @order_date_from';
+END;
+
+EXECUTE sys.sp_executesql
+    @sql,
+    N'@customer_id integer, @status_code varchar(10), @order_date_from date',
+    @customer_id,
+    @status_code,
+    @order_date_from;
+```
+
+  Up to 2^3 = 8 distinct plans cache — deliberately, one per filter combination.
+
+**Azure SQL Database notes**
+
+- Benchmark buckets must include the all-NULL combination and each single-filter case (`get_query_parameter_buckets` + §4.1). Equivalence proof per `RunGuide.md` before recommending.
+
+### Rule 12 — RBAR cursor to set-based
+
+**User input** (plan symptom: one UPDATE plus one correlated aggregate probe per customer; thousands of tiny statements)
+
+```sql
+DECLARE @customer_id int;
+DECLARE customer_cursor CURSOR FOR
+SELECT customer_id FROM dbo.customers;
+OPEN customer_cursor;
+FETCH NEXT FROM customer_cursor INTO @customer_id;
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    UPDATE dbo.customers
+    SET lifetime_value = (SELECT SUM(o.total_due) FROM dbo.orders AS o
+                          WHERE o.customer_id = @customer_id)
+    WHERE customer_id = @customer_id;
+    FETCH NEXT FROM customer_cursor INTO @customer_id;
+END;
+CLOSE customer_cursor;
+DEALLOCATE customer_cursor;
+```
+
+**Expected response**
+
+**Schema check:** `dbo.customers`, `dbo.orders` qualified; preserved.
+
+**Plan findings**
+
+- Per-row work the engine can do as one set: each iteration pays parse/execute, a keyed UPDATE, and a correlated `SUM` probe — customers × 2 statements.
+- This is RBAR (Rule 12), not the §1.4 batching pattern: batching chunks one set operation to bound transaction size; this loop does per-row work.
+
+**Optimized query**
+
+```sql
+UPDATE
+    c
+SET
+    c.lifetime_value = s.customer_total
+FROM dbo.customers AS c
+LEFT JOIN
+(
+    SELECT
+        o.customer_id,
+        customer_total = SUM(o.total_due)
+    FROM dbo.orders AS o
+    GROUP BY
+        o.customer_id
+) AS s
+  ON s.customer_id = c.customer_id;
+```
+
+**What changed and why**
+
+- One set-based UPDATE replaces customers × 2 statements (Rule 12).
+- `LEFT JOIN`, not `JOIN`: the cursor updates **every** customer, and `SUM` over zero orders yields NULL — customers with no orders must get `lifetime_value = NULL`. An inner join would silently skip them (different result).
+
+*Optional changes (not applied — please confirm):*
+
+- If `dbo.customers` is very large, batch this single UPDATE per §1.4 (`UPDATE TOP (n)` keyed loop). That loop is chunked set work, not RBAR.
+
+**Azure SQL Database notes**
+
+- DML tuning belongs on a sandbox clone (`SandboxGuide.md`). Equivalence is proven on post-update table state, not row counts (Phase 4).
+
+### Rule 13 — OR across different columns
+
+**User input** (plan symptom: full scan; neither single-column index can be seeked through the disjunction)
+
+```sql
+SELECT o.order_id, o.order_date, o.customer_id, o.sales_rep_id, o.total_due
+FROM dbo.orders AS o
+WHERE o.customer_id = @customer_id OR o.sales_rep_id = @sales_rep_id;
+```
+
+**Expected response**
+
+**Schema check:** `dbo.orders` qualified; preserved.
+
+**Plan findings**
+
+- The OR spans two different columns; the optimizer cannot seek both indexes for one disjunction and falls back to a scan (Rule 13; same-column OR would seek fine).
+
+**Optimized query** (exactly row-equivalent because the unique `order_id` is projected)
+
+```sql
+SELECT
+    o.order_id,
+    o.order_date,
+    o.customer_id,
+    o.sales_rep_id,
+    o.total_due
+FROM dbo.orders AS o
+WHERE o.customer_id = @customer_id
+
+UNION ALL
+
+SELECT
+    o.order_id,
+    o.order_date,
+    o.customer_id,
+    o.sales_rep_id,
+    o.total_due
+FROM dbo.orders AS o
+WHERE o.sales_rep_id = @sales_rep_id
+AND   (o.customer_id <> @customer_id OR o.customer_id IS NULL);
+```
+
+**Index recommendations**
+
+```sql
+CREATE NONCLUSTERED INDEX IX_orders_customer_id
+    ON dbo.orders (customer_id)
+    INCLUDE (order_date, sales_rep_id, total_due)
+    WITH (ONLINE = ON);
+
+CREATE NONCLUSTERED INDEX IX_orders_sales_rep_id
+    ON dbo.orders (sales_rep_id)
+    INCLUDE (order_date, customer_id, total_due)
+    WITH (ONLINE = ON);
+```
+
+**What changed and why**
+
+- Each branch seeks its own index; the mutual-exclusion predicate keeps both-match rows from duplicating (Rule 13).
+- The `IS NULL` arm is mandatory while `customer_id` is nullable: `NULL <> @customer_id` is UNKNOWN and would silently drop rows the original OR returned.
+
+*Optional changes (not applied — please confirm):*
+
+- Plain `UNION` is simpler but pays a dedup sort and collapses legitimate source duplicates — only equivalent here because `order_id` is unique.
+- If either parameter can be NULL at call time, this is also a Rule 11 pattern — handle that first.
+
+**Azure SQL Database notes**
+
+- Both `EXCEPT` directions must return zero rows before recommending (Phase 4 / `RunGuide.md`).
+
+### Rule 14 — correlated per-row subqueries to window function
+
+**User input** (plan symptom: two Nested Loops branches each executing once per customer; the orders index probed 2 × customers times)
+
+```sql
+SELECT c.customer_id, c.customer_name,
+    (SELECT TOP 1 o.order_date FROM dbo.orders AS o
+     WHERE o.customer_id = c.customer_id ORDER BY o.order_date DESC) AS last_order_date,
+    (SELECT TOP 1 o.total_due FROM dbo.orders AS o
+     WHERE o.customer_id = c.customer_id ORDER BY o.order_date DESC) AS last_order_total
+FROM dbo.customers AS c;
+```
+
+**Expected response**
+
+**Schema check:** `dbo.customers`, `dbo.orders` qualified; preserved.
+
+**Plan findings**
+
+- Two correlated subqueries against the same table: `dbo.orders` is probed twice per customer where one windowed read suffices (Rule 14).
+- Latent bug in the original: the two independent `TOP 1` probes can return `last_order_date` from one tied order and `last_order_total` from a different one when `order_date` ties.
+
+**Optimized query**
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    last_order_date = lo.order_date,
+    last_order_total = lo.total_due
+FROM dbo.customers AS c
+LEFT JOIN
+(
+    SELECT
+        o.customer_id,
+        o.order_date,
+        o.total_due,
+        order_rank = ROW_NUMBER() OVER
+            (
+                PARTITION BY
+                    o.customer_id
+                ORDER BY
+                    o.order_date DESC,
+                    o.order_id DESC
+            )
+    FROM dbo.orders AS o
+) AS lo
+  ON  lo.customer_id = c.customer_id
+  AND lo.order_rank = 1;
+```
+
+**Index recommendations**
+
+```sql
+CREATE NONCLUSTERED INDEX IX_orders_customer_id_order_date
+    ON dbo.orders (customer_id, order_date DESC)
+    INCLUDE (total_due)
+    WITH (ONLINE = ON);
+```
+
+**What changed and why**
+
+- One windowed read of `dbo.orders` replaces two probes per customer (Rule 14). `LEFT JOIN` preserves customers with no orders (the original returns NULLs for them).
+- Both output columns now come from the **same** order row, and the `o.order_id DESC` tiebreaker makes the pick deterministic.
+
+*Optional changes (not applied — please confirm):*
+
+- The tiebreaker is a semantic pin the original did not guarantee — confirm it, or use `RANK() = 1` if all tied rows are wanted (Rule 14 ties caveat).
+
+**Azure SQL Database notes**
+
+- The index keys (partition column, then window ORDER BY) remove the Sort feeding the window — see IndexingGuide "GROUP BY, TOP, ORDER BY, and Window Functions". Equivalence proof per Phase 4.
+
+### Rule 15 — multi-statement TVF row source
+
+`dbo.fn_customer_order_totals()` is a multi-statement TVF aggregating `dbo.orders` per customer into a declared return table (`customer_id integer, order_count bigint, total_due money`).
+
+**User input** (plan symptom: TVF operator estimated 100 rows, actual 1,240,000; Nested Loops join chosen; interleaved execution did not engage)
+
+```sql
+SELECT c.customer_id, c.customer_name, r.order_count, r.total_due
+FROM dbo.customers AS c
+JOIN dbo.fn_customer_order_totals() AS r ON r.customer_id = c.customer_id
+WHERE r.total_due > @minimum_total;
+```
+
+**Expected response**
+
+**Schema check:** `dbo.customers`, `dbo.fn_customer_order_totals` qualified; preserved.
+
+**Plan findings**
+
+- The multi-statement TVF gets a fixed 100-row estimate (compatibility level 140+) against 1.24M actual rows — the Nested Loops choice downstream is built on that guess (Rule 15).
+- Estimated exactly 100 with far higher actuals = interleaved execution did not engage for this shape.
+
+**Optimized query** (function body inlined as a derived table)
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    r.order_count,
+    r.total_due
+FROM dbo.customers AS c
+JOIN
+(
+    SELECT
+        o.customer_id,
+        order_count = COUNT_BIG(*),
+        total_due = SUM(o.total_due)
+    FROM dbo.orders AS o
+    GROUP BY
+        o.customer_id
+) AS r
+  ON r.customer_id = c.customer_id
+WHERE r.total_due > @minimum_total;
+```
+
+**What changed and why**
+
+- The optimizer now sees the aggregation directly: real estimates, sane join choice (Rule 15). `COUNT_BIG` matches the declared `bigint` return column.
+
+*Optional changes (not applied — please confirm):*
+
+- Convert the shared function to an inline TVF so every caller benefits (shared-object change — audit all callers first; return column types/nullability must match exactly):
+
+```sql
+CREATE OR ALTER FUNCTION
+    dbo.fn_customer_order_totals ()
+RETURNS table
+AS
+RETURN
+(
+    SELECT
+        o.customer_id,
+        order_count = COUNT_BIG(*),
+        total_due = SUM(o.total_due)
+    FROM dbo.orders AS o
+    GROUP BY
+        o.customer_id
+);
+```
+
+- If the body cannot be one statement, materialize into a `#temptable` and join to it — real statistics (§1.3).
+
+**Azure SQL Database notes**
+
+- Interleaved execution (compatibility 140+) fixes some MSTVF estimates without code change, but not data-modification uses — always check estimate vs actual on the TVF operator. Equivalence proof per Phase 4.
+
+### Rule 16 — nested view stack
+
+`dbo.v_order_enriched` selects from `dbo.v_order_details` (which joins `dbo.orders`, `dbo.customers`, `dbo.addresses`, `dbo.sales_reps` under a `DISTINCT`) and adds `dbo.shipping_status`.
+
+**User input** (plan symptom: operators touch six base tables for a three-column result; the inner view's `DISTINCT` blocked join pruning)
+
+```sql
+SELECT v.order_id, v.order_date, v.customer_name
+FROM dbo.v_order_enriched AS v
+WHERE v.order_date >= @order_date_from;
+```
+
+**Expected response**
+
+**Schema check:** `dbo.v_order_enriched` qualified; preserved. Base objects traced per §1.1: `orders`, `customers`, `addresses`, `sales_reps`, `shipping_status`.
+
+**Plan findings**
+
+- The plan joins six tables; the final projection needs two (`orders`, `customers`). The inner view's `DISTINCT` prevented the optimizer from pruning the unused joins (Rule 16).
+
+**Optimized query** (flattened to base tables — recommended redesign, since the views serve other consumers)
+
+```sql
+SELECT
+    o.order_id,
+    o.order_date,
+    customer_name = c.customer_name
+FROM dbo.orders AS o
+JOIN dbo.customers AS c
+  ON c.customer_id = o.customer_id
+WHERE o.order_date >= @order_date_from;
+```
+
+**Index recommendations**
+
+```sql
+CREATE NONCLUSTERED INDEX IX_orders_order_date
+    ON dbo.orders (order_date)
+    INCLUDE (customer_id)
+    WITH (ONLINE = ON);
+```
+
+**What changed and why**
+
+- The hot query reads only what it projects (Rule 16). Equivalence rests on two proofs, both stated: (1) the view's `DISTINCT` was pure cost — `order_id` is unique in the projection and `customers` is joined on its key (Rule 5); (2) each removed inner join was non-filtering — trusted foreign keys on `NOT NULL` columns. Verify both before approving.
+
+*Optional changes (not applied — please confirm):*
+
+- This is a per-call-site redesign (Rule 10 convention): the views remain the API for other consumers.
+
+**Azure SQL Database notes**
+
+- Do not reach for indexed views or `SCHEMABINDING` casually — IndexingGuide's "Partitioning and Indexed Views" gate applies; index the base tables instead. Equivalence proof per Phase 4.
+
+## Field examples
+
+Real before/afters promoted from the audit corpus by the `ImproveGuide.md` review pass ("Promoting field examples"): anonymized to the neutral `dbo` example domain, shapes preserved exactly, measured numbers verbatim, each tagged with its corpus run id. Capped at **5** — a new candidate must displace the weakest current entry.
+
+*None promoted yet. Candidates come from your own runs: record with `SQL_OPTIMIZER_AUDIT_FULL_SQL=1`, then run the `ImproveGuide.md` review pass once the corpus has enough runs to show recurrence. Equivalence failures and regressions outrank routine wins.*

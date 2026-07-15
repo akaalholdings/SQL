@@ -43,12 +43,14 @@ on first write.
 
 ### Run document shape (`/tmp/audit.json`)
 
-Fill every field you can from the work you just did. Required: `query` and `outcome`. Everything
-else defaults safely if omitted, but the more you record, the more useful the corpus.
+Fill every field you can from the work you just did. Required: `query` and `outcome`.
+`index_changes` defaults to zeroes and the remaining collections default empty. Supplied
+values are type-checked without coercion: for example, `equivalence_proven` must be a JSON
+boolean and metric numbers must be finite.
 
 ```json
 {
-  "environment": "mid",
+  "environment": "<database name from list_databases, e.g. awlt_dev>",
   "query": "<RAW original query, exactly as supplied>",
   "rewrite": "<RAW optimized query>",
   "scripts": { "index": "<CREATE INDEX ...>", "rollback": "<DROP ...>", "deploy": "<CREATE ... ONLINE=ON>" },
@@ -73,13 +75,19 @@ else defaults safely if omitted, but the more you record, the more useful the co
 
 ### Field conventions
 
-- **`query` / `rewrite` / `scripts`** — store them **raw and verbatim** (the corpus deliberately keeps
-  the exact SQL). Preserve naming and schema qualifiers exactly as written; do not reformat.
+- **`query` / `rewrite` / `scripts`** — write them raw into `/tmp/audit.json` so the writer can hash
+  and validate the run. The audit detail file redacts them by default; set
+  `SQL_OPTIMIZER_AUDIT_FULL_SQL=1` before recording only when the user explicitly wants a raw SQL
+  corpus for later deep review. Preserve naming and schema qualifiers exactly as written; do not
+  reformat.
 - **`tables`** — objects referenced, schema-qualified exactly as in the query (unqualified stays
   unqualified, per `SchemaGuide.md`).
-- **`anti_patterns` / `rules_applied`** — short stable slugs tied to `queryguide.md` (Rules 1–10 and
+- **`anti_patterns` / `rules_applied`** — short stable slugs tied to `queryguide.md` (Rules 1–16 and
   the D.E.A.T.H. method). Reuse existing slugs across runs so they aggregate; do not invent a new
-  slug for an existing rule.
+  slug for an existing rule. Canonical slugs for Rules 11–16 — anti_patterns: `kitchen_sink`,
+  `rbar_loop`, `or_across_columns`, `correlated_per_row`, `mstvf_row_source`, `nested_views`;
+  rules_applied: `rule11_kitchen_sink`, `rule12_rbar_loop`, `rule13_or_across_columns`,
+  `rule14_correlated_per_row`, `rule15_mstvf_row_source`, `rule16_nested_views`.
 - **`improvement`** — percentages vs baseline (positive = better). Compute from `metrics`.
 - **`guidance_gaps`** — **the most important field for self-improvement.** Whenever a guide was
   ambiguous, silent, or insufficient for this query — you had to improvise, guess a convention, or
@@ -89,13 +97,20 @@ else defaults safely if omitted, but the more you record, the more useful the co
 
 ## Privacy
 
-The corpus persists **raw SQL** (original query, rewrite, and scripts) to
-`~/.copilot/skills/sql_optimizer/audits/` (override with `SQL_OPTIMIZER_AUDIT_DIR`). Because the
-content is sensitive, logging is never silent and is opt-out:
+The corpus persists compact metadata and a redacted detail file to the resolved audit dir —
+`$SQL_OPTIMIZER_AUDIT_DIR`, else the legacy `~/.copilot/skills/sql_optimizer/audits/` when it
+already exists, else `~/.sql-skills/sql_optimizer/audits/` (see `record_audit.py`). Raw SQL
+(original query, rewrite, and scripts) is **opt-in only** via `SQL_OPTIMIZER_AUDIT_FULL_SQL=1`.
+Because the content can still be sensitive, logging is never silent and is opt-out:
 
 - **Surface it.** After writing, add one line to the response with what was logged and where, e.g.
-  `Logged this run to the audit corpus: ~/.copilot/skills/sql_optimizer/audits/ (raw SQL; set SQL_OPTIMIZER_AUDIT=0 to disable).`
+  `Logged this run to the audit corpus: ~/.sql-skills/sql_optimizer/audits/ (redacted SQL; set SQL_OPTIMIZER_AUDIT=0 to disable).`
   Relay the path `record_audit.py` prints rather than guessing it.
+- **Raw SQL opt-in.** Persist raw SQL only when the user has explicitly accepted that risk, then set
+  `SQL_OPTIMIZER_AUDIT_FULL_SQL=1` for the writer and surface `(raw SQL)` in the one-line
+  confirmation. A full-SQL corpus is also what makes field-example promotion possible
+  (`ImproveGuide.md` "Promoting field examples") — a redacted corpus can identify candidates but
+  not reconstruct them.
 - **Opt out.** Logging is on by default. If `SQL_OPTIMIZER_AUDIT` is `0`/`false`/`off`/`no`,
   `record_audit.py` records nothing; say so in the same one-line slot.
 - Treat the corpus directory as sensitive: secure and back it up, and do not commit it. The writer

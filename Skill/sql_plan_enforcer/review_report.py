@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import pathlib
 import sys
 
 # Lower rank = more urgent. Failing forced plans are critical: a force that keeps failing
@@ -23,9 +25,12 @@ SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
 def _num(value, default=0.0) -> float:
+    if isinstance(value, bool):
+        return default
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        number = float(value)
+        return number if math.isfinite(number) else default
+    except (TypeError, ValueError, OverflowError):
         return default
 
 
@@ -58,6 +63,10 @@ def _summary(candidate: dict, issue_type: str) -> str:
         return f"plan regression {pct:.0%} slower than plan {target}"
     if issue_type == "parameter_sensitive":
         cv = _num(candidate.get("coefficient_of_variation"))
+        if not cv:
+            # adapted candidates (scan_adapter.py) carry stdev/avg, not a CV column
+            avg = _num(candidate.get("avg_duration"))
+            cv = _num(candidate.get("stdev_duration")) / avg if avg else 0.0
         return f"parameter-sensitive (coefficient of variation {cv:.2f})"
     if issue_type == "stale_forced_plan":
         return "forced plan beaten by a newer plan; re-evaluate"
@@ -69,7 +78,8 @@ def _summary(candidate: dict, issue_type: str) -> str:
 def build_report(candidates: list) -> dict:
     """Classify and prioritize candidates into an issues report. Does not mutate input."""
     issues = []
-    for candidate in candidates:
+    for raw_candidate in candidates:
+        candidate = raw_candidate if isinstance(raw_candidate, dict) else {}
         issue_type, severity = classify(candidate)
         issue = {
             "issue_type": issue_type,
@@ -77,6 +87,12 @@ def build_report(candidates: list) -> dict:
             "query_id": candidate.get("query_id"),
             "category": candidate.get("category"),
             "eligible": candidate.get("eligible"),
+            "eligibility_reason": candidate.get("reason"),
+            "review_only": bool(
+                candidate.get("review_only")
+                or candidate.get("automatic_tuning_review_only")
+            ),
+            "review_reason": candidate.get("review_reason"),
             "summary": _summary(candidate, issue_type),
             "would_apply_lever": candidate.get("proposed_lever"),
             "score": _num(candidate.get("score")),
@@ -112,8 +128,18 @@ def render_text(report: dict) -> str:
         if issue["severity"] != current:
             current = issue["severity"]
             lines.append(current.upper())
-        marker = "" if issue.get("eligible") is not False else "  [below threshold — monitoring only]"
+        if issue.get("review_only"):
+            reason = issue.get("review_reason") or "ownership or evidence requires review"
+            marker = f"  [review only — {reason}]"
+        elif issue.get("eligible") is False:
+            reason = issue.get("eligibility_reason")
+            suffix = f": {reason}" if reason else ""
+            marker = f"  [below threshold — monitoring only{suffix}]"
+        else:
+            marker = ""
         lines.append(f"  • query_id {issue['query_id']} — {issue['summary']}{marker}")
+        if issue.get("review_only"):
+            continue
         if issue.get("unforce_command"):
             lines.append(f"      would run: {issue['unforce_command']}")
         elif issue.get("would_apply_lever") and issue["would_apply_lever"] != "handoff_optimizer":
@@ -129,13 +155,21 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--json", action="store_true", help="Emit the report as JSON instead of text.")
     args = parser.parse_args(argv[1:])
 
-    raw = sys.stdin.read() if args.input == "-" else open(args.input, encoding="utf-8").read()
     try:
+        raw = (
+            sys.stdin.read()
+            if args.input == "-"
+            else pathlib.Path(args.input).read_text(encoding="utf-8")
+        )
         payload = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         print(f"could not parse input: {exc}", file=sys.stderr)
         return 1
     candidates = payload.get("candidates", payload) if isinstance(payload, dict) else payload
+
+    if not isinstance(candidates, list):
+        print("could not parse input: candidates must be a list", file=sys.stderr)
+        return 1
 
     report = build_report(candidates)
     print(json.dumps(report, ensure_ascii=False, indent=2) if args.json else render_text(report))

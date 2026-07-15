@@ -39,6 +39,14 @@ def test_kill_switch_overrides_everything(monkeypatch):
     assert "kill switch" in reason
 
 
+def test_unknown_kill_switch_value_fails_closed(monkeypatch):
+    monkeypatch.setenv("SQL_PLAN_ENFORCER_APPLY", "1")
+    monkeypatch.setenv("SQL_PLAN_ENFORCER_DISABLE", "ture")
+    ok, reason = can_apply("mid_prod", 42, ALLOWLIST)
+    assert ok is False
+    assert "kill switch" in reason
+
+
 def test_environment_not_allowlisted_denied(monkeypatch):
     _enable(monkeypatch)
     ok, reason = can_apply("mid_sandbox", 42, ALLOWLIST)
@@ -75,6 +83,13 @@ def test_is_allowed_is_pure():
     assert ok is False
 
 
+def test_environment_matching_is_case_insensitive_and_query_id_must_be_positive():
+    ok, _ = is_allowed("MID_PROD", 42, ALLOWLIST)
+    assert ok is True
+    assert is_allowed("mid_prod", 0, ALLOWLIST)[0] is False
+    assert is_allowed("mid_prod", True, ALLOWLIST)[0] is False
+
+
 def test_missing_allowlist_file_denies(tmp_path):
     # Fail-closed: an unreadable/missing allowlist grants nothing.
     loaded = load_allowlist(tmp_path / "nope.json")
@@ -87,3 +102,30 @@ def test_load_allowlist_reads_file(tmp_path):
     path = tmp_path / "allowlist.json"
     path.write_text(json.dumps(ALLOWLIST), encoding="utf-8")
     assert load_allowlist(path) == ALLOWLIST
+
+
+def test_symlinked_allowlist_fails_closed(tmp_path):
+    target = tmp_path / "target.json"
+    target.write_text(json.dumps(ALLOWLIST), encoding="utf-8")
+    link = tmp_path / "allowlist.json"
+    link.symlink_to(target)
+    assert load_allowlist(link) == {}
+
+
+def test_allowlist_path_resolution(tmp_path, monkeypatch):
+    import pathlib
+
+    import authorization as auth
+
+    monkeypatch.setattr(pathlib.Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("SQL_PLAN_ENFORCER_ALLOWLIST", raising=False)
+    neutral = tmp_path / ".sql-skills" / "sql_plan_enforcer" / "allowlist.json"
+    assert auth.allowlist_path() == neutral
+
+    legacy = tmp_path / ".copilot" / "skills" / "sql_plan_enforcer" / "allowlist.json"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text("{}", encoding="utf-8")
+    assert auth.allowlist_path() == legacy
+
+    monkeypatch.setenv("SQL_PLAN_ENFORCER_ALLOWLIST", str(tmp_path / "override.json"))
+    assert auth.allowlist_path() == tmp_path / "override.json"

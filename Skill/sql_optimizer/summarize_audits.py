@@ -27,10 +27,11 @@ from validate_audit import validate
 
 def default_index() -> pathlib.Path:
     override = os.environ.get("SQL_OPTIMIZER_AUDIT_DIR")
-    root = (
-        pathlib.Path(override).expanduser()
-        if override
-        else pathlib.Path.home() / ".copilot" / "skills" / "sql_optimizer" / "audits"
+    if override:
+        return pathlib.Path(override).expanduser() / "index.jsonl"
+    legacy = pathlib.Path.home() / ".copilot" / "skills" / "sql_optimizer" / "audits"
+    root = legacy if legacy.exists() else (
+        pathlib.Path.home() / ".sql-skills" / "sql_optimizer" / "audits"
     )
     return root / "index.jsonl"
 
