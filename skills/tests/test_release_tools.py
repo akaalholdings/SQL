@@ -32,6 +32,7 @@ def _install(tmp_path: pathlib.Path, destination: pathlib.Path):
         destination,
         backup_root=tmp_path / "archive",
         retired_wrapper=wrapper,
+        discovery_roots=(destination,),
     )
 
 
@@ -100,6 +101,7 @@ def test_install_archives_retired_skills_and_path_wrapper(
         destination,
         backup_root=tmp_path / "archive",
         retired_wrapper=wrapper,
+        discovery_roots=(destination,),
     )
 
     assert archive is not None
@@ -151,26 +153,77 @@ def test_parity_rejects_changed_extra_and_retired_surfaces(
     wrapper = tmp_path / "bin" / RETIRED_BUNDLE
     _install(tmp_path, destination)
 
-    assert parity.compare_install(destination, retired_wrapper=wrapper) == []
+    assert parity.compare_install(
+        destination,
+        retired_wrapper=wrapper,
+        discovery_roots=(destination,),
+    ) == []
 
     (destination / "sql_optimizer" / "SKILL.md").write_text("changed", encoding="utf-8")
-    problems = parity.compare_install(destination, retired_wrapper=wrapper)
+    problems = parity.compare_install(
+        destination,
+        retired_wrapper=wrapper,
+        discovery_roots=(destination,),
+    )
     assert any("differs" in problem for problem in problems)
 
     (destination / "sql_optimizer" / "SKILL.md").write_bytes(
         (SKILLS_ROOT / "sql_optimizer" / "SKILL.md").read_bytes()
     )
     (destination / "sql_optimizer" / "extra.md").write_text("stale", encoding="utf-8")
-    problems = parity.compare_install(destination, retired_wrapper=wrapper)
+    problems = parity.compare_install(
+        destination,
+        retired_wrapper=wrapper,
+        discovery_roots=(destination,),
+    )
     assert any("only SKILL.md" in problem for problem in problems)
 
     (destination / "sql_optimizer" / "extra.md").unlink()
     (destination / RETIRED_BUNDLE).mkdir()
     wrapper.parent.mkdir(parents=True)
     wrapper.write_text("retired", encoding="utf-8")
-    problems = parity.compare_install(destination, retired_wrapper=wrapper)
+    problems = parity.compare_install(
+        destination,
+        retired_wrapper=wrapper,
+        discovery_roots=(destination,),
+    )
     assert any("retired skill" in problem for problem in problems)
     assert any("PATH wrapper" in problem for problem in problems)
+
+
+def test_install_and_parity_cover_secondary_discovery_roots(
+    tmp_path: pathlib.Path,
+) -> None:
+    destination = tmp_path / "copilot" / "skills"
+    secondary = tmp_path / "agents" / "skills"
+    retired = secondary / "nested" / RETIRED_BUNDLE
+    wrapper = tmp_path / "bin" / RETIRED_BUNDLE
+    retired.mkdir(parents=True)
+    (retired / "old.txt").write_text("retired", encoding="utf-8")
+
+    _root, archive = install_all.install_all(
+        destination,
+        backup_root=tmp_path / "archive",
+        retired_wrapper=wrapper,
+        discovery_roots=(destination, secondary),
+    )
+
+    assert archive is not None
+    assert not retired.exists()
+    assert parity.compare_install(
+        destination,
+        retired_wrapper=wrapper,
+        discovery_roots=(destination, secondary),
+    ) == []
+
+    stale = secondary / RETIRED_BUNDLE
+    stale.mkdir(parents=True)
+    problems = parity.compare_install(
+        destination,
+        retired_wrapper=wrapper,
+        discovery_roots=(destination, secondary),
+    )
+    assert any(str(stale) in problem for problem in problems)
 
 
 def test_retired_repository_trees_have_no_payload() -> None:

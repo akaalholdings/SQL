@@ -8,11 +8,18 @@ import filecmp
 import os
 import pathlib
 import sys
+from collections.abc import Sequence
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))
+HOST_SKILL_DIRS = (
+    pathlib.Path(".copilot/skills"),
+    pathlib.Path(".claude/skills"),
+    pathlib.Path(".agents/skills"),
+    pathlib.Path(".codex/skills"),
+)
 
 
 def resolve_dest(explicit: str | None = None) -> pathlib.Path:
@@ -30,6 +37,12 @@ def resolve_dest(explicit: str | None = None) -> pathlib.Path:
 
 def default_retired_wrapper() -> pathlib.Path:
     return pathlib.Path.home() / ".local" / "bin" / RETIRED_BUNDLE
+
+
+def discoverable_skill_roots(skills_root: pathlib.Path) -> tuple[pathlib.Path, ...]:
+    candidates = [skills_root.expanduser()]
+    candidates.extend(pathlib.Path.home() / relative for relative in HOST_SKILL_DIRS)
+    return tuple(dict.fromkeys(candidates))
 
 
 def find_retired_skill_paths(skills_root: pathlib.Path) -> tuple[pathlib.Path, ...]:
@@ -55,6 +68,7 @@ def compare_install(
     skills_root: pathlib.Path,
     *,
     retired_wrapper: pathlib.Path | None = None,
+    discovery_roots: Sequence[pathlib.Path] | None = None,
 ) -> list[str]:
     problems: list[str] = []
     for bundle in ACTIVE_BUNDLES:
@@ -78,8 +92,12 @@ def compare_install(
         elif not filecmp.cmp(source, installed_skill, shallow=False):
             problems.append(f"{bundle}: SKILL.md differs from source")
 
-    for retired in find_retired_skill_paths(skills_root):
-        problems.append(f"retired skill remains discoverable: {retired}")
+    roots = discovery_roots or discoverable_skill_roots(skills_root)
+    for discovery_root in roots:
+        for retired in find_retired_skill_paths(
+            pathlib.Path(discovery_root).expanduser()
+        ):
+            problems.append(f"retired skill remains discoverable: {retired}")
 
     wrapper = (retired_wrapper or default_retired_wrapper()).expanduser()
     if wrapper.exists() or wrapper.is_symlink():

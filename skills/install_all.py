@@ -12,11 +12,18 @@ import shutil
 import sys
 import tempfile
 import uuid
+from collections.abc import Sequence
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))
+HOST_SKILL_DIRS = (
+    pathlib.Path(".copilot/skills"),
+    pathlib.Path(".claude/skills"),
+    pathlib.Path(".agents/skills"),
+    pathlib.Path(".codex/skills"),
+)
 
 
 def resolve_dest(explicit: str | None = None) -> pathlib.Path:
@@ -42,6 +49,14 @@ def default_backup_root() -> pathlib.Path:
 
 def default_retired_wrapper() -> pathlib.Path:
     return pathlib.Path.home() / ".local" / "bin" / RETIRED_BUNDLE
+
+
+def discoverable_skill_roots(skills_root: pathlib.Path) -> tuple[pathlib.Path, ...]:
+    """Return the selected destination plus known user-level skill roots."""
+
+    candidates = [skills_root.expanduser()]
+    candidates.extend(pathlib.Path.home() / relative for relative in HOST_SKILL_DIRS)
+    return tuple(dict.fromkeys(candidates))
 
 
 def _remove(path: pathlib.Path) -> None:
@@ -102,6 +117,7 @@ def install_all(
     *,
     backup_root: pathlib.Path | None = None,
     retired_wrapper: pathlib.Path | None = None,
+    discovery_roots: Sequence[pathlib.Path] | None = None,
 ) -> tuple[pathlib.Path, pathlib.Path | None]:
     """Transactionally replace active bundles and archive obsolete installations."""
     _validate_sources()
@@ -140,7 +156,12 @@ def install_all(
             os.replace(stage_root / bundle, destination)
             installed.add(bundle)
 
-        retired_paths = list(find_retired_skill_paths(skills_root))
+        retired_paths: list[pathlib.Path] = []
+        roots = discovery_roots or discoverable_skill_roots(skills_root)
+        for discovery_root in roots:
+            retired_paths.extend(
+                find_retired_skill_paths(pathlib.Path(discovery_root).expanduser())
+            )
         if wrapper.exists() or wrapper.is_symlink():
             retired_paths.append(wrapper)
         retired_paths = list(dict.fromkeys(retired_paths))

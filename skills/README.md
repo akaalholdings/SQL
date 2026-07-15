@@ -40,7 +40,7 @@ python3 skills/install_all.py --dest "$HOME/.copilot/skills"
 python3 skills/check_installed_parity.py --dest "$HOME/.copilot/skills"
 ```
 
-The collection installer stages all three skills, replaces each managed bundle transactionally, removes stale files from earlier skill versions, and archives obsolete discoverable payloads before retiring them. It changes no unrelated skill directory.
+The collection installer stages all three skills, replaces each managed bundle transactionally, removes stale files from earlier skill versions, and archives obsolete payloads found under the selected destination or known user-level Copilot, Claude, Agents, and Codex skill roots. It changes no unrelated skill directory.
 
 Reload the VS Code window after installation so Copilot refreshes skill metadata.
 
@@ -200,7 +200,7 @@ python3 skills/install_all.py --dest "$HOME/.copilot/skills"
 python3 skills/check_installed_parity.py --dest "$HOME/.copilot/skills"
 ```
 
-Before replacement, the installer archives prior managed bundles as well as retired skill/wrapper payloads. The protected archive defaults under `~/.azure-sql-mcp/backups/retired-skills/`. It may contain historical private state; keep its permissions restricted and do not commit it.
+Before replacement, the installer archives prior managed bundles as well as retired skill/wrapper payloads across `~/.copilot/skills`, `~/.claude/skills`, `~/.agents/skills`, and `~/.codex/skills`. Parity checks the same discovery roots. The protected archive defaults under `~/.azure-sql-mcp/backups/retired-skills/`. It may contain historical private state; keep its permissions restricted and do not commit it.
 
 ## Verify source and release behavior
 
