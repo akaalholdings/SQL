@@ -1,4 +1,11 @@
-.env
+.env*
+!.env.example
 work/
+.venv/
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+.DS_Store
