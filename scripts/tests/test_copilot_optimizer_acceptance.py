@@ -32,6 +32,24 @@ WHERE o.CreatedAt >= @TargetDate
         self.assertIn("unmeasured label", missing)
         self.assertIn("session continues", missing)
 
+    def test_accepts_next_evidence_steps_as_continuation(self) -> None:
+        response = """Semantic contract: preserve duplicates, NULL, and unordered rows.
+The prior index is regressed and rejected.
+Concrete rewrite (unmeasured):
+```sql
+SELECT o.OrderId, o.CreatedAt
+FROM dbo.SyntheticOrders AS o
+WHERE o.CreatedAt >= @TargetDate
+  AND o.CreatedAt < DATEADD(day, 1, @TargetDate);
+```
+Next evidence / experiment steps: benchmark the rewrite before another index.
+"""
+
+        self.assertEqual(
+            copilot_optimizer_acceptance.validate_response(response),
+            [],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
