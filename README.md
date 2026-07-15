@@ -64,6 +64,8 @@ python3 install_all.py --dest ~/.copilot/skills
 python3 check_installed_parity.py --dest ~/.copilot/skills
 ```
 
+The collection installer backs up prior managed bundles and retires obsolete copies across known user-level Copilot, Claude, Agents, and Codex skill roots. Parity checks those same discovery surfaces and the retired PATH wrapper.
+
 The three active skills are:
 
 - [`sql_health_triage`](skills/sql_health_triage/SKILL.md): read-only health and incident triage.
