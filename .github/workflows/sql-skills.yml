@@ -3,11 +3,11 @@ name: SQL skill safety
 on:
   pull_request:
     paths:
-      - "Skill/**"
+      - "skills/**"
       - ".github/workflows/sql-skills.yml"
   push:
     paths:
-      - "Skill/**"
+      - "skills/**"
       - ".github/workflows/sql-skills.yml"
   workflow_dispatch:
 
@@ -34,10 +34,10 @@ jobs:
       - name: Install verification tools
         run: python -m pip install --disable-pip-version-check pytest ruff
       - name: Run SQL skill tests
-        working-directory: Skill
+        working-directory: skills
         run: python -m pytest -q sql_optimizer/tests sql_plan_enforcer/tests sql_health_triage/tests tests
       - name: Compile runtime helpers
-        working-directory: Skill
+        working-directory: skills
         run: python -m compileall -q sql_optimizer sql_plan_enforcer sql_health_triage install_all.py check_installed_parity.py
       - name: Lint runtime helpers and tests
-        run: python -m ruff check Skill
+        run: python -m ruff check skills

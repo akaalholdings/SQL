@@ -18,7 +18,9 @@ from types import ModuleType
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
-BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+# Parity is intentionally limited to the maintained collection. Archived
+# bundles under legacy/ are neither installed nor checked here.
+ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
 _IGNORED_NAMES = {".DS_Store", "__pycache__"}
 
 
@@ -49,12 +51,12 @@ def resolve_dest(explicit: str | None = None) -> pathlib.Path:
         return pathlib.Path(env).expanduser()
     for host_dir in (".claude", ".copilot"):
         candidate = pathlib.Path.home() / host_dir / "skills"
-        if sum((candidate / bundle).is_dir() for bundle in BUNDLES) == len(BUNDLES):
+        if sum((candidate / bundle).is_dir() for bundle in ACTIVE_BUNDLES) == len(ACTIVE_BUNDLES):
             return candidate
     populated: list[tuple[int, pathlib.Path]] = []
     for host_dir in (".claude", ".copilot"):
         candidate = pathlib.Path.home() / host_dir / "skills"
-        count = sum((candidate / bundle).is_dir() for bundle in BUNDLES)
+        count = sum((candidate / bundle).is_dir() for bundle in ACTIVE_BUNDLES)
         if count:
             populated.append((count, candidate))
     if populated:
@@ -196,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
 
     skills_root = resolve_dest(args.dest)
     problems: list[str] = []
-    for bundle in BUNDLES:
+    for bundle in ACTIVE_BUNDLES:
         problems.extend(_compare_bundle(bundle, skills_root))
 
     if problems:
@@ -204,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
             print(problem, file=sys.stderr)
         return 1
 
-    print(f"installed skill parity ok ({skills_root}): " + ", ".join(BUNDLES))
+    print(f"installed skill parity ok ({skills_root}): " + ", ".join(ACTIVE_BUNDLES))
     return 0
 
 

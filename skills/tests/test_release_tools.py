@@ -11,6 +11,7 @@ import pytest
 
 
 SKILL_ROOT = pathlib.Path(__file__).resolve().parents[1]
+ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
 
 
 def _load_module(name: str, path: pathlib.Path):
@@ -28,6 +29,36 @@ parity = _load_module("release_parity", SKILL_ROOT / "check_installed_parity.py"
 
 def _install(destination: pathlib.Path) -> None:
     assert install_all.main(["--dest", str(destination)]) == 0
+
+
+def test_release_tools_target_only_the_maintained_collection():
+    assert install_all.ACTIVE_BUNDLES == ACTIVE_BUNDLES
+    assert parity.ACTIVE_BUNDLES == ACTIVE_BUNDLES
+    assert "query_geneva_db" not in install_all.ACTIVE_BUNDLES
+    assert "query_geneva_db" not in parity.ACTIVE_BUNDLES
+
+
+def test_install_all_does_not_install_the_archived_bundle(tmp_path):
+    destination = tmp_path / "skills"
+
+    _install(destination)
+
+    assert {path.name for path in destination.iterdir()} == set(ACTIVE_BUNDLES)
+    assert not (destination / "query_geneva_db").exists()
+
+
+def test_legacy_readme_is_archival_only():
+    legacy_dir = SKILL_ROOT.parent / "legacy" / "query_geneva_db"
+    readme = (legacy_dir / "README.md").read_text(encoding="utf-8")
+
+    assert "DEPRECATED" in readme
+    assert "azure-sql-mcp" in readme
+    assert "unsupported" in readme.lower()
+    assert "do not run" in readme.lower()
+    assert "query_geneva_db --install-skill" not in readme
+    assert "pip install" not in readme
+    assert not (legacy_dir / "SKILL.md").exists()
+    assert (legacy_dir / "SKILL.deprecated.md").is_file()
 
 
 def _snapshot(root: pathlib.Path) -> dict[str, tuple[str, int, bytes | None]]:

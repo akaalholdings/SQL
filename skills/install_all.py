@@ -14,7 +14,9 @@ import tempfile
 
 
 ROOT = pathlib.Path(__file__).resolve().parent
-BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+# This is the complete active collection. The archived legacy/ tree is never
+# installed by this release tool.
+ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
 _IGNORED_NAMES = {".DS_Store", "__pycache__"}
 
 
@@ -128,7 +130,7 @@ def _source_problems(spec: BundleSpec) -> list[str]:
 def _preflight() -> tuple[list[BundleSpec], list[str]]:
     specs: list[BundleSpec] = []
     problems: list[str] = []
-    for bundle in BUNDLES:
+    for bundle in ACTIVE_BUNDLES:
         try:
             installer = _load_installer(bundle)
         except (OSError, ImportError, RuntimeError) as exc:
