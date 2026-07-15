@@ -1,343 +1,254 @@
-# Azure SQL MCP skill collection
+# Azure SQL performance skills for VS Code Copilot
 
-This directory is the maintained Azure SQL Database skill collection. It contains
-exactly three active skills:
+This folder contains the three maintained Copilot skills:
 
-| Skill | Select it for | Database writes |
+- `sql-health-triage`: read-only incident and health diagnosis.
+- `sql-optimizer`: iterative single-query rewriting, equivalence checking, benchmarking, and sandbox index experiments.
+- `sql-plan-enforcer`: reviewed Query Store plan controls with verification and exact rollback.
+
+Each installed bundle contains one authoritative file: `SKILL.md`. Database execution, durable cases, tuning sessions, index leases, and plan-action intents belong to `azure-sql-mcp`.
+
+## Choose the skill
+
+| Need | Skill | MCP profile |
 | --- | --- | --- |
-| [`sql_health_triage`](sql_health_triage/SKILL.md) | Incident diagnosis, health sweeps, waits, blocking, deadlocks, tempdb, memory grants, resource pressure, and routing findings to an owner | Never; strictly read-only |
-| [`sql_optimizer`](sql_optimizer/SKILL.md) | One supplied query: actual-plan analysis, semantically identical rewrite, index recommendations, and baseline/optimized/optimized+indexes evidence | Test-index operations only through gated MCP tools; production DDL is returned as a script |
-| [`sql_plan_enforcer`](sql_plan_enforcer/SKILL.md) | Fleet-wide Query Store regression review and reversible plan controls with verification and rollback | Query Store plan forcing or hints only, behind independent gates |
+| Diagnose broad slowness, blocking, waits, resource pressure, regressions, or an incident | `sql-health-triage` | `triage` |
+| Rewrite and tune one SELECT query without database writes | `sql-optimizer` | `optimizer` |
+| Test a temporary index in an approved non-production database | `sql-optimizer` | `sandbox` |
+| Review Query Store plan stability without changes | `sql-plan-enforcer` | `enforcer-review` |
+| Apply one explicitly authorized prepared plan action | `sql-plan-enforcer` | `enforcer-apply` |
 
-The three skills share one execution dependency: the [`azure-sql-mcp`](../azure-sql-mcp/README.md)
-server. They do not open direct database connections. The archived
-[`legacy/query_geneva_db`](../legacy/query_geneva_db/) bundle is preserved for history only;
-it is not an active skill, installer input, parity input, CI target, or recommendation for
-new work.
-
-## Select the skill
-
-Use the skill whose scope matches the request, not merely the word "SQL". The frontmatter
-names are hyphenated (`sql-health-triage`, `sql-optimizer`, and `sql-plan-enforcer`), while
-the source and installed folder names use underscores.
-
-| User context or trigger | Start here | Do not start here |
-| --- | --- | --- |
-| "Everything is slow", "queries are hanging", deadlock alerts, blocking, tempdb pressure, or "run a health check" | `sql_health_triage` | Do not rewrite SQL or apply a fix during triage |
-| One query, an execution plan, SARGability, a parameter-sensitive query, or an index recommendation | `sql_optimizer` | Do not use it for a fleet-wide Query Store sweep |
-| Query Store regressions across a database, unstable plans, stale forced plans, or a recurring monitoring tick | `sql_plan_enforcer` | Do not use it to rewrite SQL or change schema/data |
-| A capacity decision, session kill, application change, or firewall/configuration change | The human owner, informed by triage evidence | No active skill is authorized to perform the decision |
-
-When a request crosses boundaries, begin with the narrowest read-only stage. For example,
-start with triage when the symptom is unknown, then hand off a query-shaped finding to the
-optimizer or a plan-instability finding to the enforcer. Ask for the target database after
-`list_databases`; never invent an alias or silently choose a default.
-
-## Workflow handoffs
-
-The maintained collection forms a detect -> stabilize/optimize -> verify loop:
-
-```text
-symptom or scheduled check
-          |
-          v
-sql_health_triage  -- read-only evidence and owner classification
-     |                         |
-     | query-shaped            | plan instability
-     v                         v
-shared handoff queue      sql_plan_enforcer review
-     |                         |
-     v                         v
-sql_optimizer ---------> redeploy verification in enforcer
-```
-
-- `sql_health_triage` records a report and may enqueue a complete query evidence pack for
-  `sql_optimizer`. Truncated or incomplete evidence must not create a corrective handoff.
-- `sql_plan_enforcer` owns fleet-wide Query Store scans and reversible plan controls. If a
-  candidate needs a rewrite or index, enqueue it for `sql_optimizer` instead of changing
-  SQL or schema in the enforcer.
-- `sql_optimizer` claims a pack, follows its normal single-query workflow, records the
-  resolution, and lets the enforcer re-verify a shipped rewrite or index.
-- Review mode is the first contact for enforcer work. It reads and reports only. Dry-run is
-  the default for enforcement; apply is a separately gated decision.
-- Each skill returns incomplete evidence explicitly. `Unknown` is a valid result when the
-  server or principal cannot provide a required fact.
+Do not use the plan-enforcement skill for query rewrites or index changes. Do not use the optimizer for a broad incident before triage identifies the query-shaped problem.
 
 ## Prerequisites
 
-### Runtime
+- VS Code with GitHub Copilot Chat.
+- Python 3.12 or newer.
+- A local checkout of this repository.
+- The MCP package under `azure-sql-mcp/`.
+- Azure SQL connection settings supplied locally, outside Git.
+- For active benchmarks or writes, a local database policy file that explicitly permits the target database and operation.
 
-- A reachable, correctly configured `azure-sql-mcp` server must expose the tools used by
-  the selected skill. Live database work is not supported without it.
-- The server must expose the intended target through `AZURE_SQL_ALLOWED_DATABASES`.
-  Call `list_databases`, confirm the target with the user, and call the relevant capability
-  or configuration tool before interpreting results.
-- The principal needs only the permissions required by the selected read path for triage
-  and optimizer analysis. Enforcer apply additionally requires Query Store to be usable and
-  the principal to be authorized for the dedicated plan-control tools.
-- Set `AZURE_SQL_QUERY_TIMEOUT_SECONDS` high enough for a known slow baseline. Keep
-  `AZURE_SQL_ROW_LIMIT` as a display/fetch safety limit; never turn it into an invented SQL
-  `TOP`, `OFFSET`, or row goal.
+The skills still work without MCP for static analysis. In that mode the optimizer must return concrete unmeasured rewrites and must not invent performance metrics.
 
-### Optional write-capable paths
+## Install for VS Code Copilot
 
-- Optimizer test-index work needs an approved sandbox/test database in
-  `AZURE_SQL_TEST_INDEX_DATABASES`, the server write policy, an explicit non-dry-run tool
-  call, and user approval. Prefer a database clone.
-- Enforcer apply needs the skill allowlist and the server write policy in addition to the
-  per-call explicit non-dry-run flag. Query Store controls are the only permitted enforcer
-  writes.
-- Production optimizer deployment remains a human-reviewed script. The optimizer does not
-  apply production index DDL as part of a normal single-query run.
-
-### Local development
-
-- Python 3.10 or newer is required by the bundled scripts.
-- `pytest` is needed for the pure-function suites. The repository also supports running it
-  through `uv` without changing the skill bundles.
-- Tests are intentionally offline and do not require credentials, a database, or a running
-  MCP server.
-
-## Install and reinstall
-
-The source root is `skills/`. From the repository root:
+From the repository root:
 
 ```bash
 python3 skills/install_all.py --dest "$HOME/.copilot/skills"
 python3 skills/check_installed_parity.py --dest "$HOME/.copilot/skills"
 ```
 
-Or, from this directory:
+The collection installer stages all three skills, replaces each managed bundle transactionally, removes stale files from earlier skill versions, and archives obsolete discoverable payloads before retiring them. It changes no unrelated skill directory.
+
+Reload the VS Code window after installation so Copilot refreshes skill metadata.
+
+To install one skill intentionally:
 
 ```bash
-python3 install_all.py --dest "$HOME/.copilot/skills"
-python3 check_installed_parity.py --dest "$HOME/.copilot/skills"
+python3 skills/sql_optimizer/install.py --dest "$HOME/.copilot/skills"
 ```
 
-`install_all.py` is the collection installer and its allowlist is deliberately the complete
-active set: `sql_health_triage`, `sql_optimizer`, and `sql_plan_enforcer`. It does not scan,
-copy, or install anything under `legacy/`, including `query_geneva_db`.
+A single-skill install does not synchronize the other two. Use `install_all.py` for normal upgrades.
 
-Reinstall with the same two commands after changing a skill. The installer stages the three
-bundles before replacing managed files, prunes stale managed files from prior versions, and
-preserves unmanaged runtime directories such as `audits/`, `experiments/`, `state/`, and
-`__pycache__/`. It does not remove an old retired bundle that a host installed in the past;
-that bundle is outside this collection's ownership and must not be reactivated.
+## Configure MCP locally
 
-Individual `install.py` files exist for packaging a single maintained bundle. Use them only
-when a single-bundle install is intentional; run the collection installer for a normal
-refresh so all three bundles stay in sync.
+Configure the `azure-sql-mcp` stdio server in the local VS Code MCP configuration. Keep server names, database names, tenant information, usernames, passwords, tokens, and policy paths out of this public repository.
 
-Do not run an installer from `legacy/query_geneva_db`. Its README is an archival deprecation
-notice, not an installation guide.
+Required local values include:
 
-## Parity checks
+```text
+AZURE_SQL_SERVER
+AZURE_SQL_DEFAULT_DATABASE
+AZURE_SQL_ALLOWED_DATABASES
+AZURE_SQL_AUTH_MODE
+AZURE_SQL_PROFILE
+AZURE_SQL_DATABASE_POLICY_FILE
+```
 
-Run parity against the exact destination used for installation:
+Use Entra authentication where available. If a credential is required, load it from the operating-system credential store or a protected local environment file; do not paste it into chat or commit it.
+
+The MCP README documents the complete server command, profile behavior, database-policy schema, and write gates.
+
+## Database policy
+
+Profiles limit the exposed workflow; the local policy limits what a particular database may do. Both must allow an operation.
+
+A policy entry controls:
+
+- read access;
+- repeated benchmarks;
+- disposable test indexes;
+- prepared plan actions;
+- maximum benchmark executions;
+- environment classification.
+
+Unknown databases fail closed for benchmarks, temporary indexes, and plan apply. Production should remain read-only unless a reviewed exception is deliberately configured. The policy file is local and uncommitted.
+
+## Use in Copilot Chat
+
+Name the skill and give it the smallest useful scope.
+
+### Read-only incident triage
+
+```text
+Use sql-health-triage. Diagnose why requests timed out in the last 30 minutes.
+Stay read-only, use the configured database I select, and show evidence gaps.
+```
+
+Expected behavior:
+
+- starts a shared performance case;
+- records collection windows, units, availability, truncation, provenance, and stable identities;
+- returns exactly `healthy`, `actionable`, `partial`, or `inconclusive`;
+- hands query work to the optimizer or plan review by case id;
+- changes nothing.
+
+### Static rewrite before a plan exists
+
+```text
+Use sql-optimizer. Rewrite this Azure SQL query now from the text alone.
+Mark it unmeasured, preserve duplicates, NULLs, ordering and ties, then tell me what evidence to collect.
+<synthetic query>
+```
+
+Expected behavior:
+
+- states the semantic contract;
+- returns concrete SQL when a safe rewrite is possible;
+- inspects all six candidate families;
+- treats missing plan evidence as lower confidence, not a reason to stop.
+
+### Iterative measured tuning
+
+```text
+Use sql-optimizer with the optimizer profile. Open a tuning session for this SELECT.
+Test one change at a time across common, rare, NULL and boundary parameters.
+Continue after losing candidates and return the full leaderboard and winning SQL.
+<synthetic query>
+```
+
+Expected behavior:
+
+- defaults to at most 10 candidates, three screening runs, five finalist runs, four parameter cases, 80 executions, or 20 minutes;
+- executes each measured query once per sample;
+- uses duplicate- and order-aware equivalence;
+- records every candidate as improved, neutral, regressed, equivalence_failed, inconclusive, or cleanup_required;
+- does not let a slower index end the session.
+
+### Sandbox index test
+
+```text
+Use sql-optimizer with the sandbox profile on the approved non-production database.
+Benchmark this disposable index candidate, enforce the lease, and confirm cleanup.
+<synthetic query and candidate definition>
+```
+
+The sandbox profile and database policy must both permit temporary indexes. Cleanup failure blocks another test and returns the lease plus rollback instructions.
+
+### Plan review
+
+```text
+Use sql-plan-enforcer in review mode. Review Query Store regressions for the selected database.
+Do not prepare or apply anything.
+```
+
+### Prepared plan action
+
+```text
+Use sql-plan-enforcer. Prepare the reviewed action for this evidence id.
+Show the exact prior-state reference and verification contract; do not apply yet.
+```
+
+Applying is a separate user-authorized step through an `enforcer-apply` server and a prepared intent id. Direct force, hint, unrestricted SQL, and raw apply paths are not valid skill workflows.
+
+## Inline/edit context
+
+Use inline or edit mode only for static SQL rewriting in an open file. Ask the optimizer to preserve the recorded semantic contract and return the edit as unmeasured. Move to Copilot Chat or an agent/task context for MCP evidence, repeated benchmarks, index leases, or prepared plan actions so the complete session and results remain visible.
+
+## Agent/task context
+
+Use an agent/task for multi-step triage or tuning when Copilot must call several MCP tools. Set the profile when starting the MCP server, not inside SQL. Keep one performance case and one tuning session per problem; opening replacement sessions must not bypass budgets.
+
+Plan apply requires explicit authorization for each prepared intent. A long-running task does not broaden that authorization.
+
+## Upgrade safely
+
+1. Pull the intended repository revision.
+2. Run the collection installer against the same destination used previously.
+3. Run parity.
+4. Reload VS Code.
+5. Run the clean-room optimizer acceptance prompt before work use.
+
+Print the synthetic prompt, paste it into a new Copilot Chat with no prior SQL
+context, save the response outside the repository, then validate it:
 
 ```bash
+python3 scripts/copilot_optimizer_acceptance.py --print-prompt
+python3 scripts/copilot_optimizer_acceptance.py --response /tmp/copilot-response.md
+```
+
+The validator requires a concrete SARGable rewrite labelled `unmeasured`, a
+semantic contract, the slower index recorded as `regressed`, and explicit
+continuation to the next experiment. It prints requirement names only on
+failure and never echoes the response.
+
+```bash
+git pull --ff-only
+python3 skills/install_all.py --dest "$HOME/.copilot/skills"
 python3 skills/check_installed_parity.py --dest "$HOME/.copilot/skills"
 ```
 
-The parity script checks only the three maintained bundles and their declared runtime files.
-It detects missing, changed, stale, or symlinked files in managed trees while ignoring
-`__pycache__`, `.DS_Store`, credential-named files, and intentionally unmanaged state
-directories. A successful result names all three bundles. A legacy `query_geneva_db`
-directory is neither required nor examined by this check.
+Before replacement, the installer archives prior managed bundles as well as retired skill/wrapper payloads. The protected archive defaults under `~/.azure-sql-mcp/backups/retired-skills/`. It may contain historical private state; keep its permissions restricted and do not commit it.
 
-If parity fails, reinstall to the same destination and run parity again. Do not copy files
-by hand from an older source checkout; update the source under `skills/` and reinstall.
+## Verify source and release behavior
 
-## Per-skill examples
-
-These are trigger examples and workflow shapes, not database commands to run blindly.
-
-### Health triage
-
-Prompt shape:
-
-```text
-Use sql-health-triage. Everything is slow in the approved Azure SQL database.
-Run incident triage, show the evidence behind each severity, and route only complete
-actionable findings to the correct owner.
-```
-
-Expected flow:
-
-1. Call `list_databases`, confirm the target, then call `check_capabilities` and
-   `get_resource_limits`.
-2. Follow the matching branch in `sql_health_triage/TriageGuide.md` or run its health-sweep
-   path when no symptom is supplied.
-3. Return `ReportGuide.md` format: evidence, severity, owner, incomplete observations, and
-   human-only recommendations such as a possible `KILL` command. Never execute a kill or a
-   write tool.
-4. Log the completed report best-effort with `record_triage.py` and surface the resolved log
-   path or the fact that logging is disabled.
-
-### Single-query optimization
-
-Prompt shape:
-
-```text
-Use sql-optimizer for this one Azure SQL query. Preserve result semantics, inspect the
-actual plan if available, recommend only evidence-backed indexes, and benchmark the
-baseline and rewrite before returning deployment scripts.
-```
-
-Expected flow:
-
-1. Follow `SchemaGuide.md`, `queryguide.md`, `IndexingGuide.md`, `StyleGuide.md`, and
-   `RunGuide.md` in that order.
-2. Use `tune_query` and `benchmark_query_rewrite` where available, with explicit parameter
-   values from the required Query Store buckets. Use `execute_sql` and `explain_query` for
-   targeted read-only proof.
-3. Prove result equivalence and return the three-scenario results matrix. A test index is
-   disposable, `IX_Testing_`-prefixed, sandbox-approved, and created/dropped only through
-   the dedicated gated tools. On older MCP servers, emit a script for an operator instead.
-4. Record the audit last. Raw SQL is redacted by default; raw SQL persistence requires the
-   explicit `SQL_OPTIMIZER_AUDIT_FULL_SQL=1` opt-in.
-
-### Plan enforcement
-
-Prompt shape:
-
-```text
-Use sql-plan-enforcer in review mode for a Query Store health snapshot. List regressions,
-parameter-sensitive candidates, top consumers, and stale forced plans. Do not apply anything.
-```
-
-Expected flow:
-
-1. Start with `ReviewGuide.md` for monitor-only work. Use `plan_health_review` plus the
-   dedicated read-only Query Store scans and return a severity-grouped report.
-2. For an enforcement request, run `ScanGuide.md` -> `scan_rank.py` -> `EnforceGuide.md`.
-   Preview/dry-run is the default and emits exact apply/rollback scripts without executing.
-3. Apply only after the skill allowlist, kill switch, `SQL_PLAN_ENFORCER_APPLY`, server
-   `AZURE_SQL_WRITE_POLICY=apply`, explicit `dry_run=false`, and ledger preflight all pass.
-4. Verify each control with `verify_decision.py`; keep only a measured improvement, revert a
-   regression or no-op, and record every action in the fail-closed ledger.
-
-## State and audit paths
-
-Installation destination and runtime state are separate. The source move to `skills/` does
-not migrate or delete an existing audit corpus.
-
-| Skill | Override | Existing-host fallback | Default |
-| --- | --- | --- | --- |
-| Health triage audit | `SQL_HEALTH_TRIAGE_AUDIT_DIR` | Existing `~/.copilot/skills/sql_health_triage/audits/` | `~/.sql-skills/sql_health_triage/audits/` |
-| Optimizer audit | `SQL_OPTIMIZER_AUDIT_DIR` | Existing `~/.copilot/skills/sql_optimizer/audits/` | `~/.sql-skills/sql_optimizer/audits/` |
-| Optimizer experiments | `SQL_OPTIMIZER_EXPERIMENT_DIR` | Existing `~/.copilot/skills/sql_optimizer/experiments/` | `~/.sql-skills/sql_optimizer/experiments/` |
-| Enforcer ledger | `SQL_PLAN_ENFORCER_AUDIT_DIR` | Existing `~/.copilot/skills/sql_plan_enforcer/audits/` | `~/.sql-skills/sql_plan_enforcer/audits/` |
-| Enforcer coverage | `SQL_PLAN_ENFORCER_STATE` | Existing host state as documented by `LoopGuide.md` | `~/.sql-skills/sql_plan_enforcer/state/coverage.json` |
-| Enforcer handoffs | `SQL_PLAN_ENFORCER_HANDOFF_DIR` | Existing `~/.copilot/skills/sql_plan_enforcer/handoffs/` | `~/.sql-skills/sql_plan_enforcer/handoffs/` |
-| Enforcer allowlist | `SQL_PLAN_ENFORCER_ALLOWLIST` | Existing `~/.copilot/skills/sql_plan_enforcer/allowlist.json` | `~/.sql-skills/sql_plan_enforcer/allowlist.json` |
-
-The audit toggles are `SQL_HEALTH_TRIAGE_AUDIT` and `SQL_OPTIMIZER_AUDIT`; `0`, `false`,
-`off`, and `no` disable the corresponding best-effort log. The enforcer ledger is
-safety-critical and fail-closed; do not disable or bypass it. Audit, state, handoff, and
-allowlist files can contain query text, identifiers, or operational decisions. Keep their
-directories owner-only, back them up securely, and never commit them.
-
-## Write gates and safety boundaries
-
-There are two separate safety layers: the skill's instructions/helpers and the MCP server's
-tool policy. Passing one never authorizes the other.
-
-### Health triage
-
-Triage is permanently read-only. It can recommend a human session kill, capacity change, or
-configuration change, but it never executes those actions and never creates a handoff from
-truncated evidence.
-
-### Optimizer
-
-- `execute_sql` and `explain_query` remain read-only, regardless of server access mode.
-- Test-index create/drop is the only normal tool-executed DDL path. It requires explicit user
-  approval, `AZURE_SQL_WRITE_POLICY=apply`, `dry_run=false`, and membership of the target in
-  `AZURE_SQL_TEST_INDEX_DATABASES`; names must use the `IX_Testing_` prefix. Prefer a clone.
-- Production index/statistics/deployment changes are scripts for a human review. Do not route
-  raw DDL through `execute_tsql_unrestricted`.
-
-### Plan enforcer
-
-- Review mode writes nothing: no apply, scripts staged for execution, ledger row, or coverage
-  state change.
-- Dry-run is the default. Live apply requires all of the following: kill switch disengaged,
-  `SQL_PLAN_ENFORCER_APPLY` truthy, target environment and query id allowed by the skill
-  allowlist, server `AZURE_SQL_WRITE_POLICY=apply`, explicit `dry_run=false`, and a successful
-  `prepared` ledger write.
-- Only reversible Query Store forcing and Query Store hint controls are allowed. Schema, data,
-  statistics, and index changes go to the optimizer or the human.
-- Every applied action gets post-change verification and an exact rollback path. Hold when
-  provenance, completeness, or execution volume is insufficient.
-
-## Testing and validation
-
-The suites are pure-function and guide-invariant tests. They do not connect to a database.
 From the repository root:
 
 ```bash
-(cd skills && python3 -m pytest -q)
-python3 -m compileall -q skills
+uv run --with pytest pytest -q skills
+uv run --with ruff ruff check skills
 ```
 
-From this directory, the equivalent focused run is:
+Verify a clean isolated install:
 
 ```bash
-python3 -m pytest
+tmp="$(mktemp -d)"
+HOME="$tmp/home" python3 skills/install_all.py \
+  --dest "$tmp/skills" \
+  --backup-root "$tmp/backups" \
+  --retired-wrapper "$tmp/bin/obsolete-wrapper"
+HOME="$tmp/home" python3 skills/check_installed_parity.py \
+  --dest "$tmp/skills" \
+  --retired-wrapper "$tmp/bin/obsolete-wrapper"
+rm -rf "$tmp"
 ```
 
-If the system interpreter does not provide `pytest`, use the repository's available virtual
-environment or:
-
-```bash
-uv run --with pytest pytest
-```
-
-The active test configuration collects only `tests/`, `sql_health_triage/tests/`,
-`sql_optimizer/tests/`, and `sql_plan_enforcer/tests/`. The archived `legacy/query_geneva_db`
-tests are not an active CI target. After a local reinstall, run the parity command above as
-the installed-copy check.
+The placeholder wrapper path in this isolated command is intentionally nonexistent.
 
 ## Troubleshooting
 
-### The MCP server is unavailable
+### Copilot still follows old instructions
 
-Stop before live database work. Confirm the server registration/transport and that its
-configured tool set includes the required high-level tool. Do not replace the server with a
-direct database connection. Use the low-level read-only tools only as documented fallbacks.
+Confirm the install destination, run parity, then reload the VS Code window. Parity must report exactly one `SKILL.md` in each managed bundle.
 
-### The target database is missing
+### The optimizer asks only for a plan
 
-Call `list_databases`, compare the result with the server's allowed-database configuration,
-and ask the user to choose a returned database. Do not guess an alias or print credentials.
+Confirm the installed `sql_optimizer/SKILL.md` matches source. Its first-response rule requires a concrete static rewrite whenever one is safely possible. Run the clean-room acceptance prompt after parity.
 
-### Results are truncated or configuration is unknown
+### A benchmark is policy denied
 
-Treat `truncated: true`, missing capability data, unknown Query Store state, and unknown
-provenance as incomplete evidence. Narrow the read, request the missing capability, or hold
-the action. Do not convert an evidence gap into a confident recommendation.
+Check the active profile and the local database policy. The `optimizer` profile does not grant database permission by itself. Do not widen production policy to make a test pass; use static analysis or an approved non-production database.
 
-### A baseline times out
+### A temporary index was not cleaned up
 
-Keep the query unchanged, raise `AZURE_SQL_QUERY_TIMEOUT_SECONDS` for the controlled run, and
-repeat the same parameter set. Do not add a row limit or alter ordering to make the baseline
-finish.
+Stop new index experiments. Use the MCP lease id and rollback action to reconcile cleanup. The candidate remains `cleanup_required` until MCP confirms removal.
 
-### An enforcer apply is denied
+### Plan apply is blocked
 
-Remain in dry-run and report the first failed gate. Check the kill switch, apply flag, target
-allowlist, server write policy, explicit per-call `dry_run=false`, Query Store configuration,
-and the required ledger preflight. Never bypass a denial with unrestricted SQL.
+Check that review produced a prepared intent, the evidence and prior-state hashes still match, the kill switch is open, ownership is manual, the server runs `enforcer-apply`, and the database policy permits plan apply. Do not fall back to a direct mutation tool.
 
-### Parity reports drift
+### Triage reports partial
 
-Use the same `--dest` for reinstall and parity. Check the named missing/changed/stale path,
-then rerun `install_all.py`. Preserve unmanaged audit/state directories; do not copy from an
-older source checkout.
-
-### A retired `query_geneva_db` bundle is still present on the host
-
-It is outside this collection's ownership. Do not run it or add it to an active install,
-parity, test, or workflow path. Treat `legacy/query_geneva_db/README.md` as the authoritative
-deprecation notice and route new work through `azure-sql-mcp` and the three maintained skills.
+Read the evidence-gap section. Missing permissions, Query Store coverage, truncated rows, mismatched windows, or missing parameter buckets correctly prevent a healthy/actionable conclusion. Fix only the narrow evidence gap and recollect the same case.

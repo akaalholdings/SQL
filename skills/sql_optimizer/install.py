@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the sql_optimizer skill bundle."""
+"""Install the sql_optimizer Copilot skill."""
 
 from __future__ import annotations
 
@@ -8,148 +8,87 @@ import os
 import pathlib
 import shutil
 import sys
+import tempfile
+import uuid
 
 
 SKILL_NAME = "sql_optimizer"
+SKILL_FILES = ("SKILL.md",)
+SKILL_DIRS: tuple[str, ...] = ()
 KNOWN_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
 
 
-SKILL_FILES = (
-    "SKILL.md",
-    "queryguide.md",
-    "IndexingGuide.md",
-    "SchemaGuide.md",
-    "StyleGuide.md",
-    "RunGuide.md",
-    "Examples.md",
-    "AuditGuide.md",
-    "ImproveGuide.md",
-    "IntakeGuide.md",
-    "SandboxGuide.md",
-    "main.txt",
-    "record_audit.py",
-    "validate_audit.py",
-    "summarize_audits.py",
-    "test_index_ledger.py",
-    "storage_lock.py",
-    "optimizer_storage.py",
-)
-
-SKILL_DIRS = (
-    "sources",
-)
-
-
-def _is_credential_name(name: str) -> bool:
-    lowered = pathlib.Path(name).name.lower()
-    return (
-        lowered == ".env"
-        or lowered.startswith(".env.")
-        or lowered.startswith("credentials")
-        or lowered.startswith("secret")
-        or lowered.endswith((".pem", ".key", ".p12", ".pfx"))
-    )
-
-
-def _ignore_runtime_entries(_directory: str, names: list[str]) -> set[str]:
-    return {
-        name for name in names
-        if name == ".DS_Store" or name == "__pycache__" or _is_credential_name(name)
-    }
-
-
-def _source_problems(source_dir: pathlib.Path) -> list[str]:
-    problems = []
-    for name in SKILL_FILES:
-        path = source_dir / name
-        if _is_credential_name(name) or path.is_symlink() or not path.is_file():
-            problems.append(name)
-    for name in SKILL_DIRS:
-        directory = source_dir / name
-        if _is_credential_name(name) or directory.is_symlink() or not directory.is_dir():
-            problems.append(name)
-            continue
-        for current, directories, files in os.walk(directory, followlinks=False):
-            current_path = pathlib.Path(current)
-            for entry in tuple(directories) + tuple(files):
-                path = current_path / entry
-                if _is_credential_name(entry) or path.is_symlink():
-                    problems.append(path.relative_to(source_dir).as_posix())
-    return problems
-
-
 def resolve_dest(explicit: str | None = None) -> pathlib.Path:
-    """Destination skills root: --dest > $SQL_SKILLS_DEST > existing host dir > ~/.claude/skills."""
     if explicit:
         return pathlib.Path(explicit).expanduser()
-    env = os.environ.get("SQL_SKILLS_DEST")
-    if env:
-        return pathlib.Path(env).expanduser()
-    for host_dir in (".claude", ".copilot"):
-        candidate = pathlib.Path.home() / host_dir / "skills"
+    configured = os.environ.get("SQL_SKILLS_DEST")
+    if configured:
+        return pathlib.Path(configured).expanduser()
+    for host in (".copilot", ".claude"):
+        candidate = pathlib.Path.home() / host / "skills"
         if (candidate / SKILL_NAME).is_dir():
             return candidate
-    for host_dir in (".claude", ".copilot"):
-        candidate = pathlib.Path.home() / host_dir / "skills"
-        if any((candidate / bundle).is_dir() for bundle in KNOWN_BUNDLES):
+    for host in (".copilot", ".claude"):
+        candidate = pathlib.Path.home() / host / "skills"
+        if candidate.is_dir() or candidate.parent.is_dir():
             return candidate
-    for host_dir in (".claude", ".copilot"):
-        candidate = pathlib.Path.home() / host_dir / "skills"
-        if candidate.is_dir():
-            return candidate
-    for host_dir in (".claude", ".copilot"):
-        candidate = pathlib.Path.home() / host_dir / "skills"
-        if candidate.parent.is_dir():
-            return candidate
-    return pathlib.Path.home() / ".claude" / "skills"
+    return pathlib.Path.home() / ".copilot" / "skills"
+
+
+def _remove(path: pathlib.Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+
+
+def install(skills_root: pathlib.Path) -> pathlib.Path:
+    source = pathlib.Path(__file__).resolve().parent / "SKILL.md"
+    if source.is_symlink() or not source.is_file():
+        raise RuntimeError(f"Missing or unsafe source file: {source}")
+    skills_root.mkdir(parents=True, exist_ok=True)
+    if skills_root.is_symlink() or not skills_root.is_dir():
+        raise RuntimeError(f"Refusing unsafe skills root: {skills_root}")
+    destination = skills_root / SKILL_NAME
+    if destination.is_symlink():
+        raise RuntimeError(f"Refusing symbolic-link destination: {destination}")
+
+    stage_root = pathlib.Path(tempfile.mkdtemp(prefix=f".{SKILL_NAME}.stage-", dir=skills_root))
+    staged = stage_root / SKILL_NAME
+    staged.mkdir(mode=0o700)
+    shutil.copy2(source, staged / "SKILL.md")
+    backup = skills_root / f".{SKILL_NAME}.backup-{uuid.uuid4().hex}"
+    moved_existing = False
+    try:
+        if destination.exists():
+            os.replace(destination, backup)
+            moved_existing = True
+        os.replace(staged, destination)
+    except Exception:
+        if destination.exists() or destination.is_symlink():
+            _remove(destination)
+        if moved_existing and backup.exists():
+            os.replace(backup, destination)
+        raise
+    else:
+        if backup.exists():
+            _remove(backup)
+    finally:
+        if stage_root.exists():
+            shutil.rmtree(stage_root)
+    return destination
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=f"Install the {SKILL_NAME} skill bundle.")
-    parser.add_argument("--dest", default=None,
-                        help="Skills root to install into (default: auto-detect host dir).")
+    parser = argparse.ArgumentParser(description=f"Install {SKILL_NAME}.")
+    parser.add_argument("--dest", help="Destination skills root.")
     args = parser.parse_args(argv)
-
-    source_dir = pathlib.Path(__file__).parent.resolve()
-    dest_dir = resolve_dest(args.dest) / SKILL_NAME
-
-    missing = _source_problems(source_dir)
-    if missing:
-        print(f"Missing required skill files: {', '.join(missing)}", file=sys.stderr)
+    try:
+        destination = install(resolve_dest(args.dest))
+    except Exception as exc:
+        print(f"Install failed: {exc}", file=sys.stderr)
         return 1
-
-    if dest_dir.is_symlink() or any(
-        (dest_dir / name).is_symlink() for name in SKILL_FILES + SKILL_DIRS
-    ):
-        print(f"Refusing symbolic link in install destination: {dest_dir}", file=sys.stderr)
-        return 1
-
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    for name in SKILL_FILES:
-        shutil.copy2(source_dir / name, dest_dir / name)
-    for name in SKILL_DIRS:
-        target = dest_dir / name
-        if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(
-            source_dir / name,
-            target,
-            ignore=_ignore_runtime_entries,
-        )
-
-    # Prune stale skill files left by older installs (e.g. removed guides) so the
-    # active skill matches source. Only top-level files are pruned — directories
-    # such as the audit corpus (audits/) and __pycache__ are preserved.
-    keep = set(SKILL_FILES) | set(SKILL_DIRS)
-    pruned = []
-    for entry in dest_dir.iterdir():
-        if entry.is_file() and entry.name not in keep and not _is_credential_name(entry.name):
-            entry.unlink()
-            pruned.append(entry.name)
-
-    print(f"Installed {SKILL_NAME} skill bundle to: {dest_dir}")
-    if pruned:
-        print(f"Pruned stale files: {', '.join(sorted(pruned))}")
+    print(f"Installed {SKILL_NAME} to {destination}")
     return 0
 
 

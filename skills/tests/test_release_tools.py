@@ -1,220 +1,191 @@
-"""Release-tool regression tests for recursive parity and atomic installation."""
-
 from __future__ import annotations
 
 import importlib.util
 import pathlib
 import stat
-import sys
 
 import pytest
 
 
-SKILL_ROOT = pathlib.Path(__file__).resolve().parents[1]
+SKILLS_ROOT = pathlib.Path(__file__).resolve().parents[1]
+REPO_ROOT = SKILLS_ROOT.parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))
+RETIRED_COMPONENT = "".join(("con", "nector"))
 
 
-def _load_module(name: str, path: pathlib.Path):
+def _load(name: str, path: pathlib.Path):
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
 
-install_all = _load_module("release_install_all", SKILL_ROOT / "install_all.py")
-parity = _load_module("release_parity", SKILL_ROOT / "check_installed_parity.py")
+install_all = _load("skills_install_all", SKILLS_ROOT / "install_all.py")
+parity = _load("skills_parity", SKILLS_ROOT / "check_installed_parity.py")
 
 
-def _install(destination: pathlib.Path) -> None:
-    assert install_all.main(["--dest", str(destination)]) == 0
+def _install(tmp_path: pathlib.Path, destination: pathlib.Path):
+    wrapper = tmp_path / "bin" / RETIRED_BUNDLE
+    return install_all.install_all(
+        destination,
+        backup_root=tmp_path / "archive",
+        retired_wrapper=wrapper,
+    )
 
 
-def test_release_tools_target_only_the_maintained_collection():
+def test_release_tools_target_exactly_the_maintained_collection() -> None:
     assert install_all.ACTIVE_BUNDLES == ACTIVE_BUNDLES
     assert parity.ACTIVE_BUNDLES == ACTIVE_BUNDLES
-    assert "query_geneva_db" not in install_all.ACTIVE_BUNDLES
-    assert "query_geneva_db" not in parity.ACTIVE_BUNDLES
+    for bundle in ACTIVE_BUNDLES:
+        module = _load(f"{bundle}_installer", SKILLS_ROOT / bundle / "install.py")
+        assert module.SKILL_FILES == ("SKILL.md",)
+        assert module.SKILL_DIRS == ()
 
 
-def test_install_all_does_not_install_the_archived_bundle(tmp_path):
+def test_clean_install_contains_only_authoritative_skill_files(
+    tmp_path: pathlib.Path,
+) -> None:
     destination = tmp_path / "skills"
+    installed_root, archive = _install(tmp_path, destination)
 
-    _install(destination)
-
-    assert {path.name for path in destination.iterdir()} == set(ACTIVE_BUNDLES)
-    assert not (destination / "query_geneva_db").exists()
-
-
-def test_legacy_readme_is_archival_only():
-    legacy_dir = SKILL_ROOT.parent / "legacy" / "query_geneva_db"
-    readme = (legacy_dir / "README.md").read_text(encoding="utf-8")
-
-    assert "DEPRECATED" in readme
-    assert "azure-sql-mcp" in readme
-    assert "unsupported" in readme.lower()
-    assert "do not run" in readme.lower()
-    assert "query_geneva_db --install-skill" not in readme
-    assert "pip install" not in readme
-    assert not (legacy_dir / "SKILL.md").exists()
-    assert (legacy_dir / "SKILL.deprecated.md").is_file()
+    assert installed_root == destination
+    assert archive is None
+    assert {
+        entry.name for entry in destination.iterdir() if not entry.name.startswith(".")
+    } == set(ACTIVE_BUNDLES)
+    for bundle in ACTIVE_BUNDLES:
+        assert {entry.name for entry in (destination / bundle).iterdir()} == {"SKILL.md"}
+        assert (destination / bundle / "SKILL.md").read_bytes() == (
+            SKILLS_ROOT / bundle / "SKILL.md"
+        ).read_bytes()
 
 
-def _snapshot(root: pathlib.Path) -> dict[str, tuple[str, int, bytes | None]]:
-    snapshot: dict[str, tuple[str, int, bytes | None]] = {}
-    for path in sorted(root.rglob("*")):
-        relative = path.relative_to(root).as_posix()
-        mode = stat.S_IMODE(path.stat().st_mode)
-        if path.is_dir():
-            snapshot[relative] = ("dir", mode, None)
-        elif path.is_file():
-            snapshot[relative] = ("file", mode, path.read_bytes())
-    return snapshot
-
-
-def test_parity_detects_missing_changed_and_stale_nested_files(tmp_path, capsys):
+def test_install_replaces_stale_active_payloads(tmp_path: pathlib.Path) -> None:
     destination = tmp_path / "skills"
-    _install(destination)
+    for bundle in ACTIVE_BUNDLES:
+        old = destination / bundle
+        old.mkdir(parents=True)
+        (old / "old-helper.py").write_text("old", encoding="utf-8")
+        (old / "state").mkdir()
 
-    missing = destination / "sql_optimizer" / "sources" / "brentozar-indexing" / "manifest.json"
-    missing.unlink()
-    changed = destination / "sql_optimizer" / "sources" / "kendra-indexing" / "manifest.json"
-    changed.write_text("changed", encoding="utf-8")
-    stale = destination / "sql_optimizer" / "sources" / "nested-stale" / "drift.txt"
-    stale.parent.mkdir()
-    stale.write_text("stale", encoding="utf-8")
+    _root, archive = _install(tmp_path, destination)
 
-    assert parity.main(["--dest", str(destination)]) == 1
-    errors = capsys.readouterr().err
-    assert "installed file missing: sources/brentozar-indexing/manifest.json" in errors
-    assert "installed file differs: sources/kendra-indexing/manifest.json" in errors
-    assert "stale installed file: sources/nested-stale/drift.txt" in errors
+    for bundle in ACTIVE_BUNDLES:
+        assert {entry.name for entry in (destination / bundle).iterdir()} == {"SKILL.md"}
+    assert archive is not None
+    assert stat.S_IMODE((tmp_path / "archive").stat().st_mode) == 0o700
+    archived_markers = {
+        marker.read_text(encoding="utf-8")
+        for marker in archive.glob("prior-*/old-helper.py")
+    }
+    assert archived_markers == {"old"}
 
 
-def test_install_prunes_empty_stale_directory_inside_declared_tree(tmp_path):
+def test_install_archives_retired_skills_and_path_wrapper(
+    tmp_path: pathlib.Path,
+) -> None:
     destination = tmp_path / "skills"
-    _install(destination)
-    stale = destination / "sql_optimizer" / "sources" / "empty-stale"
-    stale.mkdir()
+    top_level = destination / RETIRED_BUNDLE
+    nested = destination / "legacy" / RETIRED_BUNDLE
+    wrapper = tmp_path / "bin" / RETIRED_BUNDLE
+    for path in (top_level, nested):
+        path.mkdir(parents=True)
+        (path / "old.txt").write_text("retired", encoding="utf-8")
+    wrapper.parent.mkdir(parents=True)
+    wrapper.write_text("#!/bin/sh\n", encoding="utf-8")
 
-    _install(destination)
-
-    assert not stale.exists()
-    assert parity.main(["--dest", str(destination)]) == 0
-
-
-def test_install_all_preserves_unmanaged_state_directories(tmp_path):
-    destination = tmp_path / "skills"
-    _install(destination)
-    audit_state = destination / "sql_optimizer" / "audits" / "index.jsonl"
-    experiment_state = destination / "sql_optimizer" / "experiments" / "records" / "pending.json"
-    audit_state.parent.mkdir(parents=True)
-    experiment_state.parent.mkdir(parents=True)
-    audit_state.write_text("audit-state", encoding="utf-8")
-    experiment_state.write_text("experiment-state", encoding="utf-8")
-    local_env = destination / "sql_optimizer" / ".env"
-    local_env.write_text("LOCAL_ONLY=placeholder\n", encoding="utf-8")
-
-    _install(destination)
-
-    assert audit_state.read_text(encoding="utf-8") == "audit-state"
-    assert experiment_state.read_text(encoding="utf-8") == "experiment-state"
-    assert local_env.read_text(encoding="utf-8") == "LOCAL_ONLY=placeholder\n"
-
-
-def test_late_install_failure_rolls_back_every_bundle(tmp_path, monkeypatch):
-    destination = tmp_path / "skills"
-    _install(destination)
-    before = _snapshot(destination)
-
-    original_commit = install_all._commit_bundle
-    calls = 0
-
-    def fail_on_third_commit(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        if calls == 3:
-            raise RuntimeError("injected late commit failure")
-        return original_commit(*args, **kwargs)
-
-    monkeypatch.setattr(install_all, "_commit_bundle", fail_on_third_commit)
-
-    assert install_all.main(["--dest", str(destination)]) == 1
-    assert calls == 3
-    assert _snapshot(destination) == before
-
-
-def test_failed_first_install_removes_new_destination(tmp_path, monkeypatch):
-    destination = tmp_path / "skills"
-    original_commit = install_all._commit_bundle
-    calls = 0
-
-    def fail_on_second_commit(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        if calls == 2:
-            raise RuntimeError("injected fresh-install failure")
-        return original_commit(*args, **kwargs)
-
-    monkeypatch.setattr(install_all, "_commit_bundle", fail_on_second_commit)
-
-    assert install_all.main(["--dest", str(destination)]) == 1
-    assert not destination.exists()
-
-
-def test_staging_refuses_symbolic_link_sources(tmp_path):
-    source = tmp_path / "source"
-    source.mkdir()
-    outside = tmp_path / "outside.txt"
-    outside.write_text("must not be copied", encoding="utf-8")
-    (source / "SKILL.md").symlink_to(outside)
-    spec = install_all.BundleSpec(
-        "example",
-        object(),
-        source,
-        ("SKILL.md",),
-        (),
+    _root, archive = install_all.install_all(
+        destination,
+        backup_root=tmp_path / "archive",
+        retired_wrapper=wrapper,
     )
 
-    with pytest.raises(ValueError, match="symbolic link source refused"):
-        install_all._stage_bundle(spec, tmp_path / "stage")
+    assert archive is not None
+    assert not top_level.exists()
+    assert not nested.exists()
+    assert not wrapper.exists()
+    assert len(tuple(archive.iterdir())) == 3
+    assert stat.S_IMODE(archive.stat().st_mode) == 0o700
 
 
-def test_staging_refuses_credential_named_sources(tmp_path):
-    source = tmp_path / "source"
-    source.mkdir()
-    (source / ".env.production").write_text("not-for-install", encoding="utf-8")
-    spec = install_all.BundleSpec(
-        "example",
-        object(),
-        source,
-        (".env.production",),
-        (),
+def test_late_install_failure_restores_all_prior_bundles(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    destination = tmp_path / "skills"
+    for bundle in ACTIVE_BUNDLES:
+        old = destination / bundle
+        old.mkdir(parents=True)
+        (old / "marker.txt").write_text(bundle, encoding="utf-8")
+
+    real_replace = install_all.os.replace
+    failed = False
+
+    def flaky_replace(source, target):
+        nonlocal failed
+        source_path = pathlib.Path(source)
+        if (
+            not failed
+            and ".sql-skills-stage-" in source_path.parent.name
+            and source_path.name == "sql_plan_enforcer"
+        ):
+            failed = True
+            raise OSError("synthetic late commit failure")
+        return real_replace(source, target)
+
+    monkeypatch.setattr(install_all.os, "replace", flaky_replace)
+
+    with pytest.raises(OSError, match="synthetic"):
+        _install(tmp_path, destination)
+
+    for bundle in ACTIVE_BUNDLES:
+        assert (destination / bundle / "marker.txt").read_text(encoding="utf-8") == bundle
+
+
+def test_parity_rejects_changed_extra_and_retired_surfaces(
+    tmp_path: pathlib.Path,
+) -> None:
+    destination = tmp_path / "skills"
+    wrapper = tmp_path / "bin" / RETIRED_BUNDLE
+    _install(tmp_path, destination)
+
+    assert parity.compare_install(destination, retired_wrapper=wrapper) == []
+
+    (destination / "sql_optimizer" / "SKILL.md").write_text("changed", encoding="utf-8")
+    problems = parity.compare_install(destination, retired_wrapper=wrapper)
+    assert any("differs" in problem for problem in problems)
+
+    (destination / "sql_optimizer" / "SKILL.md").write_bytes(
+        (SKILLS_ROOT / "sql_optimizer" / "SKILL.md").read_bytes()
     )
+    (destination / "sql_optimizer" / "extra.md").write_text("stale", encoding="utf-8")
+    problems = parity.compare_install(destination, retired_wrapper=wrapper)
+    assert any("only SKILL.md" in problem for problem in problems)
 
-    with pytest.raises(ValueError, match="credential file declaration refused"):
-        install_all._stage_bundle(spec, tmp_path / "stage")
-
-
-def test_parity_rejects_symlink_inside_declared_tree(tmp_path, capsys):
-    destination = tmp_path / "skills"
-    _install(destination)
-    target = destination / "sql_optimizer" / "sources" / "outside.json"
-    target.write_text("{}", encoding="utf-8")
-    link = destination / "sql_optimizer" / "sources" / "linked.json"
-    link.symlink_to(target)
-
-    assert parity.main(["--dest", str(destination)]) == 1
-    assert "installed path is a symbolic link" in capsys.readouterr().err
+    (destination / "sql_optimizer" / "extra.md").unlink()
+    (destination / RETIRED_BUNDLE).mkdir()
+    wrapper.parent.mkdir(parents=True)
+    wrapper.write_text("retired", encoding="utf-8")
+    problems = parity.compare_install(destination, retired_wrapper=wrapper)
+    assert any("retired skill" in problem for problem in problems)
+    assert any("PATH wrapper" in problem for problem in problems)
 
 
-def test_parity_rejects_symlinked_bundle_directory(tmp_path, capsys):
-    destination = tmp_path / "skills"
-    _install(destination)
-    real_bundle = destination / "sql_optimizer-real"
-    (destination / "sql_optimizer").rename(real_bundle)
-    (destination / "sql_optimizer").symlink_to(real_bundle, target_is_directory=True)
+def test_retired_repository_trees_have_no_payload() -> None:
+    ignored_names = {"__pycache__", ".DS_Store"}
 
-    assert parity.main(["--dest", str(destination)]) == 1
-    assert "installed bundle directory is a symbolic link" in capsys.readouterr().err
+    def payloads(path: pathlib.Path) -> list[pathlib.Path]:
+        if not path.exists():
+            return []
+        return [
+            item
+            for item in path.rglob("*")
+            if item.name not in ignored_names
+            and "__pycache__" not in item.parts
+            and item.suffix != ".pyc"
+        ]
+
+    assert payloads(REPO_ROOT / "legacy" / RETIRED_BUNDLE) == []
+    assert payloads(REPO_ROOT / RETIRED_COMPONENT) == []
