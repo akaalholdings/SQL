@@ -50,6 +50,23 @@ Next evidence / experiment steps: benchmark the rewrite before another index.
             [],
         )
 
+    def test_accepts_explicit_datetime2_cast_in_lower_bound(self) -> None:
+        response = """Semantic contract: preserve duplicates, NULL, and unordered rows.
+The prior index is regressed and rejected; continue to the next experiment.
+Concrete rewrite (unmeasured):
+```sql
+SELECT o.OrderId, o.CreatedAt
+FROM dbo.SyntheticOrders AS o
+WHERE o.CreatedAt >= CAST(@TargetDate AS datetime2)
+  AND o.CreatedAt < DATEADD(day, 1, CAST(@TargetDate AS datetime2));
+```
+"""
+
+        self.assertEqual(
+            copilot_optimizer_acceptance.validate_response(response),
+            [],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

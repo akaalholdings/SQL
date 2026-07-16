@@ -30,6 +30,14 @@ concrete rewrite labelled unmeasured, the losing experiment as regressed, and
 the next evidence/experiment steps. Do not invent any other measurements.
 """
 
+_TARGET_DATE_LOWER_BOUND = re.compile(
+    r"createdat\s*(?:\]|\))?\s*>=\s*(?:"
+    r"@targetdate"
+    r"|cast\s*\(\s*@targetdate\s+as\s+datetime2(?:\s*\(\s*\d+\s*\))?\s*\)"
+    r"|convert\s*\(\s*datetime2(?:\s*\(\s*\d+\s*\))?\s*,\s*@targetdate\s*\)"
+    r")"
+)
+
 
 def validate_response(response: str) -> list[str]:
     lowered = response.casefold()
@@ -53,9 +61,7 @@ def validate_response(response: str) -> list[str]:
                 "session_continues",
             )
         ),
-        "SARGable lower bound": bool(
-            re.search(r"createdat\s*(?:\]|\))?\s*>=\s*@targetdate", compact)
-        ),
+        "SARGable lower bound": bool(_TARGET_DATE_LOWER_BOUND.search(compact)),
         "SARGable upper bound": (
             "createdat" in lowered
             and "<" in response
