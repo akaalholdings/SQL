@@ -454,16 +454,16 @@ def test_sql_previews_and_default_audit_fields_redact_literals(
         tool_name="execute_tsql_unrestricted",
         database_name="appdb",
         action_type="query",
-        sql="CREATE LOGIN test WITH PASSWORD = 'secret value'",
+        sql="CREATE LOGIN test WITH PASSWORD = 'placeholder'",
         rollback_sql="EXEC dbo.restore_value N'secret rollback value'",
     )
 
     payload = policy.preview(action)
     event = _audit_events(tmp_path)[0]
 
-    assert "secret value" not in payload["sql_preview"]
+    assert "placeholder" not in payload["sql_preview"]
     assert payload["rollback_sql"] == "EXEC dbo.restore_value N'secret rollback value'"
-    assert "secret value" not in json.dumps(event)
+    assert "placeholder" not in json.dumps(event)
     assert "secret rollback value" not in json.dumps(event)
     assert "'[REDACTED]'" in payload["sql_preview"]
     assert "sql" not in event
