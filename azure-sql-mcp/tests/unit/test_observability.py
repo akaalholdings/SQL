@@ -100,19 +100,20 @@ class TestRedactSqlLiterals:
         )
 
     def test_redacts_multiple_literals_without_changing_identifiers(self):
-        sql = "EXEC dbo.RotateLogin @login = 'dba', @password = 's3cret'"
+        sql = "EXEC dbo.RecordValues @first_value = 'dba', @second_value = 'fixture'"
         assert redact_sql_literals(sql) == (
-            "EXEC dbo.RotateLogin @login = '[REDACTED]', @password = '[REDACTED]'"
+            "EXEC dbo.RecordValues @first_value = '[REDACTED]', "
+            "@second_value = '[REDACTED]'"
         )
 
     def test_redacts_unterminated_literal_through_end_of_input(self):
         assert redact_sql_literals("SELECT 'never closed") == "SELECT '[REDACTED]'"
 
     def test_redacts_double_quoted_values_for_quoted_identifier_off(self):
-        sql = 'SET QUOTED_IDENTIFIER OFF; CREATE LOGIN x WITH PASSWORD = "S3cret!"'
+        sql = 'SET QUOTED_IDENTIFIER OFF; SELECT "fixture value"'
 
         assert redact_sql_literals(sql) == (
-            'SET QUOTED_IDENTIFIER OFF; CREATE LOGIN x WITH PASSWORD = "[REDACTED]"'
+            'SET QUOTED_IDENTIFIER OFF; SELECT "[REDACTED]"'
         )
 
     def test_redacts_literals_adjacent_to_keywords(self):
