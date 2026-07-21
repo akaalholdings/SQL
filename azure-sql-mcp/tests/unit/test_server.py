@@ -294,6 +294,24 @@ def test_remote_transport_hides_admin_tools_without_remote_admin_opt_in() -> Non
     assert "rebuild_index" not in tools
 
 
+def test_unrestricted_tool_advertises_scoped_dba_contract() -> None:
+    app = AzureSqlMcpApplication(make_config(access_mode=AccessMode.UNRESTRICTED))
+    tool = app.mcp._tool_manager._tools["execute_tsql_unrestricted"]
+
+    assert "CREATE DATABASE" in tool.description
+    assert "DROP DATABASE" in tool.description
+    assert "dry_run=false" in tool.description
+    assert "statically reconstructible" in tool.description
+    assert "Automatic retries" in tool.description
+    assert "GO separators" in tool.description
+
+    schema = tool.fn_metadata.arg_model.model_json_schema()
+    sql_description = schema["properties"]["sql"]["description"]
+    assert "separate tool calls" in sql_description
+    assert "always prohibited" in sql_description
+    assert "runtime-opaque dynamic SQL" in sql_description
+
+
 @pytest.mark.asyncio
 async def test_run_tool_formats_errors_from_callback(app: AzureSqlMcpApplication) -> None:
     async def boom(_: str) -> dict[str, str]:
@@ -303,6 +321,20 @@ async def test_run_tool_formats_errors_from_callback(app: AzureSqlMcpApplication
 
     assert response["code"] == "tool_error"
     assert response["message"] == "boom"
+
+
+@pytest.mark.asyncio
+async def test_run_tool_redacts_sql_literals_from_response(
+    app: AzureSqlMcpApplication,
+) -> None:
+    async def boom(_: str) -> dict[str, str]:
+        raise RuntimeError("Incorrect syntax near N'SuperSecret-123!'")
+
+    response = await app._run_tool("sample_tool", None, boom)
+
+    assert response["code"] == "tool_error"
+    assert "SuperSecret-123!" not in response["message"]
+    assert "N'[REDACTED]'" in response["message"]
 
 
 @pytest.mark.asyncio

@@ -14,7 +14,9 @@ The server is a Python 3.12+ FastMCP application providing:
 - SQL validation via sqlglot AST walking
 - Database allowlist enforcement
 - Structured tool output, prompt/resources support, and token-safe artifact resources
-- Audited admin write policy with dry-run defaults, read-only raw SQL apply, and generated Query Store force/unforce workflows
+- Audited admin write policy with dry-run defaults, scoped DBA batches for existing databases, and generated Query Store force/unforce workflows
+
+Scoped DBA batches accept direct/static native T-SQL, static stored-procedure calls, and statically reconstructible literal/constant dynamic SQL. Runtime-opaque dynamic SQL is rejected because the MCP cannot prove the invariant prohibition on `CREATE DATABASE` and `DROP DATABASE`. A dedicated SQL principal provides the authoritative boundary: on SQL Server it must not be a member of `sysadmin` or `dbcreator`, must own no database, and should have no fixed server-role membership beyond implicit `public`. Azure SQL Database deployments must also exclude the provisioning principal, Entra administrator, `dbmanager`, and `##MS_DatabaseManager##`.
 
 ## Feature Gap Analysis
 
@@ -92,7 +94,7 @@ src/azure_sql_mcp/
   server.py                  # MCP app, tool/resource/prompt registration
   config.py                  # CLI + env var configuration
   transport_auth.py          # HTTP/SSE bearer token verifier
-  admin_policy.py            # write policy, hard denylist, JSONL audit
+  admin_policy.py            # write policy, database-lifecycle invariant, JSONL audit
   artifact_store.py          # token-safe artifact resources
   auth.py                    # Azure credential management
   connection.py              # Query executor (uses pool)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from azure_sql_mcp.observability import (
     compute_query_hash,
     extract_sql_error_info,
+    redact_sql_literals,
     sanitize_error_message,
 )
 
@@ -79,3 +80,45 @@ class TestSanitizeErrorMessage:
     def test_preserves_generic_messages(self):
         msg = "Timeout expired while waiting for query"
         assert sanitize_error_message(msg) == msg
+
+    def test_preserves_apostrophe_in_generic_message(self):
+        msg = "Can't connect because the session isn't available"
+        assert sanitize_error_message(msg) == msg
+
+    def test_strips_sql_literals(self):
+        msg = "Incorrect syntax near N'SuperSecret-123!'"
+        sanitized = sanitize_error_message(msg)
+        assert "SuperSecret-123!" not in sanitized
+        assert "N'[REDACTED]'" in sanitized
+
+
+class TestRedactSqlLiterals:
+    def test_redacts_plain_unicode_and_escaped_literals(self):
+        sql = "SELECT 'plain', N'unicode', 'it''s private', 42"
+        assert redact_sql_literals(sql) == (
+            "SELECT '[REDACTED]', N'[REDACTED]', '[REDACTED]', 42"
+        )
+
+    def test_redacts_multiple_literals_without_changing_identifiers(self):
+        sql = "EXEC dbo.RotateLogin @login = 'dba', @password = 's3cret'"
+        assert redact_sql_literals(sql) == (
+            "EXEC dbo.RotateLogin @login = '[REDACTED]', @password = '[REDACTED]'"
+        )
+
+    def test_redacts_unterminated_literal_through_end_of_input(self):
+        assert redact_sql_literals("SELECT 'never closed") == "SELECT '[REDACTED]'"
+
+    def test_redacts_double_quoted_values_for_quoted_identifier_off(self):
+        sql = 'SET QUOTED_IDENTIFIER OFF; CREATE LOGIN x WITH PASSWORD = "S3cret!"'
+
+        assert redact_sql_literals(sql) == (
+            'SET QUOTED_IDENTIFIER OFF; CREATE LOGIN x WITH PASSWORD = "[REDACTED]"'
+        )
+
+    def test_redacts_literals_adjacent_to_keywords(self):
+        assert redact_sql_literals("SELECT'synthetic-secret'") == (
+            "SELECT'[REDACTED]'"
+        )
+        assert redact_sql_literals("PRINT'synthetic-secret'") == (
+            "PRINT'[REDACTED]'"
+        )

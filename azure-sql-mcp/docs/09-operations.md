@@ -103,6 +103,49 @@ Set its absolute path with `AZURE_SQL_DATABASE_POLICY_FILE`. Missing files, inva
 
 The profile is a server-side tool filter. Access mode, tool groups, Azure SQL permissions, database policy, and workflow state are independent gates.
 
+## Scoped DBA runbook
+
+Scoped DBA mode is separate from the five tuning profiles. Start it without `AZURE_SQL_PROFILE`, preferably as a dedicated local stdio process:
+
+```bash
+unset AZURE_SQL_PROFILE
+export AZURE_SQL_TRANSPORT="stdio"
+export AZURE_SQL_ACCESS_MODE="unrestricted"
+export AZURE_SQL_TOOL_GROUPS="all"
+export AZURE_SQL_WRITE_POLICY="apply"
+uv run azure-sql-mcp
+```
+
+Use `execute_tsql_unrestricted` for one native T-SQL batch at a time. DDL, DML, `EXEC`, DBCC, grants, maintenance, and destructive object operations are supported. Direct/static T-SQL, static stored-procedure calls, and statically reconstructible literal/constant dynamic SQL are accepted subject to the lifecycle guard. Runtime-opaque dynamic SQL is rejected because the MCP cannot prove that it preserves the `CREATE DATABASE` / `DROP DATABASE` invariant. SSMS `GO` separators must be split into separate calls. Preview first with the default `dry_run=true`; apply only with explicit `dry_run=false`.
+
+Each applied batch executes exactly once with automatic transient retries disabled, on a connection isolated from the normal pool. The executor drains all result sets with a per-result-set row limit, so a capped `SELECT` does not stop later statements. If the call times out or is cancelled, its audit outcome is `apply_outcome_unknown`. Inspect the database before deciding whether any follow-up is safe.
+
+Provision and validate the dedicated principal before exposing the tool. Use the protected administrative credential only for bootstrap; run the MCP as the scoped principal. Generate its password locally, never print it, and keep any environment file outside Git with mode `600`. The MCP guard is defence in depth; SQL permissions are the authoritative no-database-drop boundary. Keep the principal out of `sysadmin`, `dbcreator`, `db_owner`, and `db_securityadmin`; ensure the login owns no database; and, on SQL Server, give it no fixed server-role membership beyond the implicit `public` role. Do not grant it `CONTROL`, `TAKE OWNERSHIP`, `IMPERSONATE`, `CREATE ANY DATABASE`, or `ALTER ANY DATABASE`. On Azure SQL Database, do not use the provisioning principal, Entra administrator, `dbmanager`, or `##MS_DatabaseManager##`; see [Azure SQL server roles](https://learn.microsoft.com/en-us/azure/azure-sql/database/security-server-roles?view=azuresql) and [`DROP DATABASE` permissions](https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-transact-sql?view=sql-server-ver17).
+
+For SQL Server, connect as the MCP login and verify its server-role membership and database ownership:
+
+```sql
+SELECT
+    IS_SRVROLEMEMBER(N'sysadmin') AS is_sysadmin,
+    IS_SRVROLEMEMBER(N'dbcreator') AS is_dbcreator;
+
+SELECT role_principal.name AS fixed_server_role
+FROM sys.server_role_members AS membership
+JOIN sys.server_principals AS role_principal
+    ON role_principal.principal_id = membership.role_principal_id
+JOIN sys.server_principals AS member_principal
+    ON member_principal.principal_id = membership.member_principal_id
+WHERE member_principal.sid = SUSER_SID(ORIGINAL_LOGIN());
+
+SELECT database_name.name AS owned_database
+FROM sys.databases AS database_name
+WHERE database_name.owner_sid = SUSER_SID(ORIGINAL_LOGIN());
+```
+
+Require `is_sysadmin = 0` and `is_dbcreator = 0` exactly, not `NULL`. The fixed-role and owned-database queries must return no rows; `public` membership is implicit and is not listed in `sys.server_role_members`.
+
+Canary validation must stay inside an existing disposable schema: create a table, view, procedure, and index; run bounded DML and a permission change; then drop only those canary objects. Confirm effective permissions contain no `sysadmin`, `dbcreator`, `db_owner`, `CONTROL DATABASE`, or `ALTER ANY DATABASE`, and confirm the login owns no database. Never test the lifecycle boundary by issuing a live database drop.
+
 ## Triage runbook
 
 Start:
@@ -192,7 +235,7 @@ Safety gates:
 
 Call only `benchmark_index_candidate`, supplying the same named parameter cases recorded on the performance case. It creates a namespaced disposable index, measures every bucket, performs one bounded snapshot comparison per bucket, and removes the index automatically. A slower index is classified and rejected without ending the session. Cleanup failure returns `cleanup_required` and blocks another test. Expired leases are reconciled when the sandbox process starts.
 
-Do not use direct create/drop tools for live DDL; they are preview-only.
+Do not use the general scoped DBA tool from the tuning workflow. The named `sandbox` profile intentionally exposes only its leased index path.
 
 ## Plan review runbook
 
@@ -277,7 +320,7 @@ Default locations:
 
 These directories may contain private operational metadata. Keep them outside Git, owner-readable only, and under the workstation's normal backup/encryption policy.
 
-Performance state omits raw SQL. Admin audit stores SQL hashes and previews by default; `AZURE_SQL_AUDIT_FULL_SQL=1` is a separate explicit opt-in.
+Performance state omits raw SQL. Admin audit stores SQL hashes and literal-redacted previews by default, and recorded errors are sanitized the same way. `AZURE_SQL_AUDIT_FULL_SQL=1` is a separate explicit opt-in that can persist password-bearing statements; protect that audit as secret material.
 
 ## Troubleshooting
 

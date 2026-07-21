@@ -1,6 +1,6 @@
 # Azure SQL MCP
 
-`azure-sql-mcp` is the typed execution and evidence layer for Azure SQL Database performance work. It gives MCP clients bounded read access, durable performance cases, iterative query benchmarks, leased sandbox index tests, and reviewed Query Store plan actions.
+`azure-sql-mcp` is the typed execution and evidence layer for Azure SQL Database performance work and scoped administration of existing databases. It gives MCP clients bounded read access, durable performance cases, iterative query benchmarks, leased sandbox index tests, reviewed Query Store plan actions, and an audited DBA batch path that cannot create or drop databases.
 
 The supported tuning path is evidence-first but rewrite-active: a missing plan lowers confidence; it does not prevent a concrete static rewrite. A failed or slower experiment rejects only that candidate and does not end the session.
 
@@ -14,6 +14,7 @@ The supported tuning path is evidence-first but rewrite-active: a missing plan l
 - Snapshot-consistent, shape-, duplicate-, and order-aware result comparison where a complete bounded comparison is possible.
 - Durable temporary-index leases, automatic cleanup, and startup recovery of expired leases.
 - Prepared Query Store plan actions with prior-state capture, policy checks, verification, and exact rollback.
+- One-shot native T-SQL administration within allowlisted existing databases, with database lifecycle operations permanently excluded.
 
 The Copilot operating instructions live in [`../skills/`](../skills/). The skills decide what to investigate and how to present the result; this package owns database execution, policy, durable state, and deterministic workflow transitions.
 
@@ -27,12 +28,14 @@ Supported:
 - Microsoft Entra authentication through `DefaultAzureCredential`, service principal, or interactive browser credentials.
 - SQL password authentication when supplied from protected local secret storage.
 - Read-only SELECT-shaped active benchmarks. DML and side-effecting procedures are not executed by the tuning workflow.
+- Scoped DBA execution against existing allowlisted databases when every write gate is enabled and the SQL principal has deliberately limited permissions.
 
 Not supported:
 
 - Azure control-plane changes, server provisioning, firewall changes, or service-tier changes.
 - Automatic production index deployment.
 - Autonomous plan forcing.
+- `CREATE DATABASE`, `DROP DATABASE`, or any administrative identity that can perform database lifecycle operations.
 - Treating a bounded sample as proof of equivalence.
 - Treating PLE, buffer-cache ratio, or fragmentation thresholds as query-health conclusions.
 
@@ -64,6 +67,26 @@ uv run azure-sql-mcp
 ```
 
 The default transport is stdio. This configuration can inspect only databases in `AZURE_SQL_ALLOWED_DATABASES`; Azure SQL permissions remain the final authority.
+
+## Scoped DBA execution
+
+Run a separate local stdio process without a named tuning profile when an operator needs broad administration of existing databases:
+
+```bash
+unset AZURE_SQL_PROFILE
+export AZURE_SQL_TRANSPORT="stdio"
+export AZURE_SQL_ACCESS_MODE="unrestricted"
+export AZURE_SQL_TOOL_GROUPS="all"
+export AZURE_SQL_WRITE_POLICY="apply"
+
+uv run azure-sql-mcp
+```
+
+`execute_sql` remains strictly read-only. `execute_tsql_unrestricted` accepts one native T-SQL batch containing DDL, DML, `EXEC`, DBCC, permission changes, maintenance, and destructive object operations such as `DROP TABLE`. Direct and static native T-SQL, static stored-procedure calls, and statically reconstructible literal/constant dynamic SQL are accepted subject to the lifecycle guard. Runtime-opaque dynamic SQL is rejected because the MCP cannot prove that it preserves the `CREATE DATABASE` / `DROP DATABASE` invariant. Each call defaults to `dry_run=true`; crossing the database boundary additionally requires explicit `dry_run=false` and `AZURE_SQL_WRITE_POLICY=apply`. SSMS `GO` separators are not T-SQL and are unsupported, so submit each batch as a separate call.
+
+An applied admin batch gets an isolated connection, executes once with automatic transient retries disabled, and drains every result set while enforcing the configured row limit per result set. A timeout or cancellation is reported and audited as `apply_outcome_unknown`: it cannot prove whether SQL Server committed work, so reconcile database state before issuing another call.
+
+The MCP lifecycle guard is defence in depth. The authoritative boundary is a dedicated SQL principal that can administer only the configured existing databases, is not a member of `sysadmin`, `dbcreator`, `db_owner`, or `db_securityadmin`, owns no database, and has no `CONTROL`, `TAKE OWNERSHIP`, `IMPERSONATE`, `CREATE ANY DATABASE`, or `ALTER ANY DATABASE` authority. On SQL Server, give the login no fixed server-role membership beyond the implicit `public` role. The allowlist is an additional routing boundary, not a substitute for SQL permissions. See [Security](SECURITY.md#scoped-dba-principal) and the [operations runbook](docs/09-operations.md#scoped-dba-runbook).
 
 ## VS Code Copilot
 
@@ -166,7 +189,7 @@ Performance state stores:
 - plan-action prior state and verification decisions;
 - temporary-index lease identifiers and cleanup targets.
 
-Performance state does not persist raw SQL. Secret-like metadata and SQL-shaped metadata fields are dropped at the persistence boundary. The separate admin audit can include full generated SQL only when `AZURE_SQL_AUDIT_FULL_SQL=1`; leave it disabled unless an approved local audit process requires it.
+Performance state does not persist raw SQL. Secret-like metadata and SQL-shaped metadata fields are dropped at the persistence boundary. Tool `sql_preview` values, default admin audit previews, and recorded errors redact every T-SQL string literal, including passwords supplied to statements such as `CREATE LOGIN`. The separate admin audit can include full raw SQL only when `AZURE_SQL_AUDIT_FULL_SQL=1`; leave it disabled unless an approved local audit process requires raw statements and protects that data as a credential-bearing secret.
 
 ## Read-only triage workflow
 
@@ -228,7 +251,7 @@ They remain available for existing clients, but new integrations should use the 
 
 ## Sandbox index workflow
 
-Use only `benchmark_index_candidate`; direct create/drop tools cannot perform live DDL.
+Within the named `sandbox` tuning profile, use only `benchmark_index_candidate`; that profile intentionally hides the general scoped DBA batch tool.
 
 Required gates:
 
@@ -246,7 +269,7 @@ The returned payload contains generated index DDL, rollback DDL, lease state, pl
 
 ## Reviewed plan enforcement
 
-The only mutation path is:
+For Query Store plan changes, the supported tuning mutation path is:
 
 1. Use `plan_health_review`, `review_plan_enforcement`, or preview-only `plan_enforcer_tick` under `enforcer-review`.
 2. Call `prepare_plan_action` with the shared tuning session id, reviewed evidence, reviewer, reason, operation, and unique idempotency key.
@@ -271,7 +294,7 @@ Apply gates include the named profile, unrestricted local server, write policy, 
 | `interactive` | Interactive browser sign-in support |
 | `sql-password` | `AZURE_SQL_USERNAME`, `AZURE_SQL_PASSWORD` |
 
-Keep credentials in the operating-system credential store, managed identity, or a protected local environment source. Do not put them in MCP JSON committed to Git.
+Keep credentials in the operating-system credential store, managed identity, or a protected local environment source. Do not put them in MCP JSON committed to Git. Prefer `AZURE_SQL_MCP_BEARER_TOKEN` in a protected environment source because command-line arguments are visible in process listings.
 
 ## Configuration reference
 
@@ -302,7 +325,7 @@ Keep credentials in the operating-system credential store, managed identity, or 
 | `AZURE_SQL_TRANSPORT` | `stdio` | `stdio`, `sse`, or `streamable-http` |
 | `AZURE_SQL_HOST` | `127.0.0.1` | HTTP/SSE bind host |
 | `AZURE_SQL_PORT` | `8000` | HTTP/SSE port |
-| `AZURE_SQL_MCP_BEARER_TOKEN` | required remotely | Bearer token for SSE/HTTP |
+| `AZURE_SQL_MCP_BEARER_TOKEN` | required remotely | Bearer token for SSE/HTTP; prefer a protected environment source |
 | `AZURE_SQL_ENABLE_REMOTE_ADMIN` | `0` | Additional remote admin exposure gate; named write profiles should remain local |
 
 ### Audit and TLS
@@ -311,7 +334,7 @@ Keep credentials in the operating-system credential store, managed identity, or 
 | --- | --- | --- |
 | `AZURE_SQL_WRITE_POLICY` | disabled when restricted, otherwise review | `disabled`, `review`, or `apply` |
 | `AZURE_SQL_AUDIT_DIR` | `~/.azure-sql-mcp/audit` | Permission-restricted admin audit directory |
-| `AZURE_SQL_AUDIT_FULL_SQL` | `0` | Opt in to full generated SQL in admin audit records |
+| `AZURE_SQL_AUDIT_FULL_SQL` | `0` | Opt in to full raw SQL in admin audit records |
 | `AZURE_SQL_TRUST_SERVER_CERTIFICATE` | `false` | Keep false for Azure SQL Database |
 | `AZURE_SQL_LOG_LEVEL` | `INFO` | Logging level |
 | `AZURE_SQL_LOG_FORMAT` | `text` | `text` or `json` |
@@ -323,7 +346,7 @@ Equivalent `--azure-sql-*` flags are available in `uv run azure-sql-mcp --help`.
 - `core`: bounded query execution, introspection, performance cases, tuning sessions, result/plan comparison, Query Store top queries, and operational health.
 - `performance`: waits, blocking, resource history, statistics, query/index analysis, plan regression, and plan review.
 - `schema`: schema capture, comparison, and migration-script generation. Generated scripts are not executed.
-- `admin`: guarded maintenance and prepared apply tools. Named profiles prune unrelated direct mutation tools.
+- `admin`: guarded maintenance, prepared apply tools, and scoped DBA execution for existing databases. Named profiles prune unrelated direct mutation tools.
 
 Resources include schema views and token-safe plan artifacts under `azuresql-artifact://{artifact_id}`. Artifact content is process-local and expires with the server.
 
@@ -340,7 +363,7 @@ uv run pytest -q
 uv build
 ```
 
-Live validation is opt-in. Use only an allowlisted dedicated non-production Azure SQL database. Start with the `optimizer` profile for read-only validation. Use `sandbox` only for leased test indexes and `enforcer-apply` only for one explicitly authorized prepared intent. Production remains read-only.
+Live validation is opt-in. Use only an allowlisted dedicated non-production Azure SQL database. Start with the `optimizer` profile for read-only validation. Use `sandbox` only for leased test indexes and `enforcer-apply` only for one explicitly authorized prepared intent. Validate scoped DBA mode with disposable objects inside an existing database; never issue a live database-create or database-drop test. The tuning workflows remain read-only except for their purpose-built gated mutations.
 
 ## Troubleshooting
 
@@ -363,6 +386,10 @@ Stop further index tests. Restart the approved sandbox profile to retry expired-
 ### Plan apply is blocked
 
 Check the prepared intent, current prior-state match, ownership, `enforcer-apply` profile, local stdio transport, unrestricted access, write policy, database policy, authorization reference, and kill switch. Do not fall back to a direct force or hint tool.
+
+### A DBA apply timed out or was cancelled
+
+Treat `apply_outcome_unknown` as a reconciliation requirement, not a retry signal. Inspect the database using a new read-only call, determine whether the intended change committed, and only then decide on a compensating or follow-up batch.
 
 ### A diagnostic is partial
 

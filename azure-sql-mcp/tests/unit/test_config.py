@@ -66,6 +66,7 @@ def test_http_transport_requires_bearer_token(monkeypatch):
     monkeypatch.setenv("AZURE_SQL_SERVER", "server.database.windows.net")
     monkeypatch.setenv("AZURE_SQL_DEFAULT_DATABASE", "appdb")
     monkeypatch.setenv("AZURE_SQL_ALLOWED_DATABASES", "appdb")
+    monkeypatch.delenv("AZURE_SQL_MCP_BEARER_TOKEN", raising=False)
 
     with pytest.raises(ValueError, match="AZURE_SQL_MCP_BEARER_TOKEN"):
         load_server_config(["--transport", "streamable-http"])

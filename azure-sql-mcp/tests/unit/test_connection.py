@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -9,6 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
+from azure_sql_mcp.connection import BatchExecutionMode
 from azure_sql_mcp.connection import AzureSqlExecutor
 from azure_sql_mcp.connection import ProfiledExecution
 from azure_sql_mcp.connection import QueryResult
@@ -88,6 +90,117 @@ async def test_execute_batches_discards_failed_connections_across_retries(
 
 
 @pytest.mark.asyncio
+async def test_execute_batches_admin_mode_does_not_replay_transient_failure(
+    sample_server_config,
+) -> None:
+    connection = MagicMock()
+    pool = SimpleNamespace(
+        acquire=AsyncMock(return_value=connection),
+        release=AsyncMock(),
+        discard=AsyncMock(),
+    )
+    executor = AzureSqlExecutor(sample_server_config, MagicMock(), pool)
+
+    with patch.object(
+        executor,
+        "_execute_with_connection",
+        side_effect=Exception("40501 transient failure"),
+    ) as execute_mock:
+        with pytest.raises(Exception, match="40501 transient failure"):
+            await executor.execute_batches(
+                "appdb",
+                "CREATE TABLE dbo.canary (id int)",
+                execution_mode=BatchExecutionMode.ADMIN,
+            )
+
+    execute_mock.assert_called_once()
+    assert execute_mock.call_args.kwargs["drain_all_result_sets"] is True
+    pool.discard.assert_awaited_once_with("appdb", connection)
+    pool.release.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_execute_batches_admin_mode_discards_successful_connection(
+    sample_server_config,
+) -> None:
+    connection = MagicMock()
+    pool = SimpleNamespace(
+        acquire=AsyncMock(return_value=connection),
+        release=AsyncMock(),
+        discard=AsyncMock(),
+    )
+    executor = AzureSqlExecutor(sample_server_config, MagicMock(), pool)
+    expected = [QueryResult(columns=(), rows=[])]
+
+    with patch.object(
+        executor,
+        "_execute_with_connection",
+        return_value=expected,
+    ) as execute_mock:
+        result = await executor.execute_batches(
+            "appdb",
+            "USE tempdb; SET NOCOUNT ON",
+            execution_mode=BatchExecutionMode.ADMIN,
+        )
+
+    assert result == expected
+    execute_mock.assert_called_once()
+    pool.discard.assert_awaited_once_with("appdb", connection)
+    pool.release.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_execute_batches_admin_mode_cancellation_discards_without_replay(
+    sample_server_config,
+) -> None:
+    connection = MagicMock()
+    worker_started = threading.Event()
+    worker_release = threading.Event()
+    discard_finished = asyncio.Event()
+
+    async def discard(database_name: str, discarded_connection) -> None:
+        assert database_name == "appdb"
+        assert discarded_connection is connection
+        discard_finished.set()
+
+    pool = SimpleNamespace(
+        acquire=AsyncMock(return_value=connection),
+        release=AsyncMock(),
+        discard=AsyncMock(side_effect=discard),
+    )
+    executor = AzureSqlExecutor(sample_server_config, MagicMock(), pool)
+
+    def blocked_execution(*args, **kwargs) -> list[QueryResult]:
+        worker_started.set()
+        worker_release.wait(timeout=2)
+        return []
+
+    with patch.object(
+        executor,
+        "_execute_with_connection",
+        side_effect=blocked_execution,
+    ) as execute_mock:
+        task = asyncio.create_task(
+            executor.execute_batches(
+                "appdb",
+                "WAITFOR DELAY '00:00:01'",
+                execution_mode=BatchExecutionMode.ADMIN,
+            )
+        )
+        assert await asyncio.to_thread(worker_started.wait, 1)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        worker_release.set()
+        await asyncio.wait_for(discard_finished.wait(), timeout=1)
+
+    execute_mock.assert_called_once()
+    connection.cancel.assert_called_once()
+    pool.discard.assert_awaited_once_with("appdb", connection)
+    pool.release.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_execute_non_query_returns_cursor_rowcount(sample_server_config) -> None:
     cursor = RowCountCursor([2, -1, 3, 0])
     connection = MagicMock()
@@ -107,6 +220,64 @@ async def test_execute_non_query_returns_cursor_rowcount(sample_server_config) -
     assert rowcount == 5
     pool.release.assert_awaited_once_with("appdb", connection)
     pool.discard.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_non_query_admin_mode_does_not_retry_and_discards(
+    sample_server_config,
+) -> None:
+    connection = MagicMock()
+    pool = SimpleNamespace(
+        acquire=AsyncMock(return_value=connection),
+        release=AsyncMock(),
+        discard=AsyncMock(),
+    )
+    executor = AzureSqlExecutor(sample_server_config, MagicMock(), pool)
+
+    with patch.object(
+        executor,
+        "_execute_non_query_with_connection",
+        side_effect=Exception("40501 transient failure"),
+    ) as execute_mock:
+        with pytest.raises(Exception, match="40501 transient failure"):
+            await executor.execute_non_query(
+                "appdb",
+                "ALTER INDEX [IX] ON [dbo].[Orders] REBUILD",
+                execution_mode=BatchExecutionMode.ADMIN,
+            )
+
+    execute_mock.assert_called_once()
+    pool.discard.assert_awaited_once_with("appdb", connection)
+    pool.release.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_execute_non_query_admin_mode_discards_successful_connection(
+    sample_server_config,
+) -> None:
+    connection = MagicMock()
+    pool = SimpleNamespace(
+        acquire=AsyncMock(return_value=connection),
+        release=AsyncMock(),
+        discard=AsyncMock(),
+    )
+    executor = AzureSqlExecutor(sample_server_config, MagicMock(), pool)
+
+    with patch.object(
+        executor,
+        "_execute_non_query_with_connection",
+        return_value=1,
+    ) as execute_mock:
+        rowcount = await executor.execute_non_query(
+            "appdb",
+            "UPDATE dbo.Orders SET IsArchived = 1",
+            execution_mode=BatchExecutionMode.ADMIN,
+        )
+
+    assert rowcount == 1
+    execute_mock.assert_called_once()
+    pool.discard.assert_awaited_once_with("appdb", connection)
+    pool.release.assert_not_awaited()
 
 
 def test_execute_non_query_with_connection_counts_only_positive_rowcounts(
@@ -239,6 +410,34 @@ def test_execute_with_connection_closes_cursor(sample_server_config) -> None:
     assert cursor.execute.call_args_list[0] == call("SET LOCK_TIMEOUT 30000", ())
     assert cursor.execute.call_args_list[1] == call("SELECT 1", ())
     cursor.close.assert_called_once()
+
+
+def test_execute_with_connection_admin_mode_drains_capped_result_sets(
+    sample_server_config,
+) -> None:
+    executor = AzureSqlExecutor(sample_server_config, MagicMock(), MagicMock())
+    cursor = MagicMock()
+    cursor.description = [("id",)]
+    cursor.fetchmany.side_effect = [[(1,), (2,)], [(3,), (4,)]]
+    cursor.nextset.side_effect = [True, False]
+    connection = MagicMock()
+    connection.cursor.return_value = cursor
+
+    results = executor._execute_with_connection(
+        connection,
+        "appdb",
+        "SELECT 1; SELECT 2",
+        (),
+        max_rows=2,
+        drain_all_result_sets=True,
+    )
+
+    assert results == [
+        QueryResult(columns=("id",), rows=[{"id": 1}, {"id": 2}]),
+        QueryResult(columns=("id",), rows=[{"id": 3}, {"id": 4}]),
+    ]
+    assert cursor.fetchmany.call_args_list == [call(2), call(2)]
+    assert cursor.nextset.call_count == 2
 
 
 def test_execute_non_query_with_connection_closes_cursor(sample_server_config) -> None:

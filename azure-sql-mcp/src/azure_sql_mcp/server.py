@@ -2458,7 +2458,15 @@ class AzureSqlMcpApplication:
                 )
 
             @self.mcp.tool(
-                description="Execute unrestricted T-SQL. This can be destructive.",
+                description=(
+                    "Execute one native T-SQL batch against an allowlisted existing "
+                    "database. DDL, DML, EXEC, DBCC, permission changes, maintenance, "
+                    "and destructive object operations are accepted; CREATE DATABASE "
+                    "and DROP DATABASE are always rejected. Dynamic SQL must be "
+                    "statically reconstructible so the lifecycle guard can inspect it. "
+                    "Execution requires dry_run=false and AZURE_SQL_WRITE_POLICY=apply. "
+                    "Automatic retries and SSMS GO separators are not supported."
+                ),
                 annotations=ToolAnnotations(
                     title="Execute Unrestricted T-SQL",
                     readOnlyHint=False,
@@ -2468,7 +2476,13 @@ class AzureSqlMcpApplication:
                 ),
             )
             async def execute_tsql_unrestricted(
-                sql: str = Field(description="T-SQL to execute."),
+                sql: str = Field(
+                    description=(
+                        "One native T-SQL batch. Submit SSMS GO-separated batches as "
+                        "separate tool calls. CREATE DATABASE and DROP DATABASE are "
+                        "always prohibited; runtime-opaque dynamic SQL is rejected."
+                    ),
+                ),
                 dry_run: bool = Field(
                     default=True,
                     description=(

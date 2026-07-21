@@ -49,9 +49,69 @@ def compute_query_hash(sql: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
 
+def redact_sql_literals(sql: str) -> str:
+    """Redact possible T-SQL quoted literals without retaining their contents.
+
+    Every single-quoted token is treated as a literal, including compact valid
+    forms such as ``PRINT'secret'``. Double-quoted tokens are also redacted because
+    ``SET QUOTED_IDENTIFIER OFF`` can make them string literals earlier in the same
+    batch. The scanner understands doubled-quote escapes and treats an unterminated
+    literal as sensitive through the end of the input. Unicode ``N`` prefixes
+    remain visible.
+    """
+    return _redact_quoted_content(sql, strict_single_quotes=True)
+
+
+def _redact_quoted_content(text: str, *, strict_single_quotes: bool) -> str:
+    redacted: list[str] = []
+    index = 0
+    while index < len(text):
+        quote = text[index]
+        if quote not in {"'", '"'} or (
+            quote == "'"
+            and not strict_single_quotes
+            and not _starts_sql_literal(text, index)
+        ):
+            redacted.append(text[index])
+            index += 1
+            continue
+
+        redacted.append(f"{quote}[REDACTED]{quote}")
+        index += 1
+        while index < len(text):
+            if text[index] != quote:
+                index += 1
+                continue
+            if index + 1 < len(text) and text[index + 1] == quote:
+                index += 2
+                continue
+            index += 1
+            break
+
+    return "".join(redacted)
+
+
+def _starts_sql_literal(sql: str, quote_index: int) -> bool:
+    if quote_index == 0:
+        return True
+    previous = sql[quote_index - 1]
+    if previous in {"N", "n"}:
+        return quote_index == 1 or not _is_sql_identifier_character(
+            sql[quote_index - 2]
+        )
+    return not _is_sql_identifier_character(previous)
+
+
+def _is_sql_identifier_character(character: str) -> bool:
+    return character.isalnum() or character in "_@$#"
+
+
 def sanitize_error_message(message: str) -> str:
-    """Strip connection strings, server names, and IPs from error messages."""
-    sanitized = _CONN_STRING_PATTERN.sub("[REDACTED];", message)
+    """Strip SQL literals and connection details from error messages."""
+    # Error text is natural language as well as SQL, so preserve apostrophes in
+    # words while still redacting quoted SQL fragments such as ``near N'secret'``.
+    sanitized = _redact_quoted_content(message, strict_single_quotes=False)
+    sanitized = _CONN_STRING_PATTERN.sub("[REDACTED];", sanitized)
     sanitized = _SERVER_NAME_PATTERN.sub("[server]", sanitized)
     sanitized = _IP_PATTERN.sub("[ip]", sanitized)
     return sanitized

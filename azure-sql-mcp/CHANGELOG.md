@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+
+- Scoped DBA execution for native DDL, DML, `EXEC`, DBCC, permission changes, maintenance, and destructive object operations within configured existing databases.
+- An invariant database-lifecycle guard that rejects direct, obfuscated, stored-module, and statically inspectable literal/constant dynamic-string forms of `CREATE DATABASE` and `DROP DATABASE`.
+
+### Changed
+
+- Arbitrary admin batches now execute once on an isolated connection without automatic transient retry and drain every result set with per-result-set row caps.
+- Admin previews, default audit records, and sanitized errors redact T-SQL string literals.
+
+### Security
+
+- Database lifecycle operations have no configuration bypass, including for trusted generated actions. A deliberately scoped SQL principal remains the authoritative no-drop boundary.
+- Runtime-opaque dynamic SQL is rejected when the guard cannot prove the lifecycle invariant. The reference SQL Server principal is excluded from `dbcreator` and all other fixed server roles beyond implicit `public`, and must own no database.
+- Admin timeout and cancellation events are audited as `apply_outcome_unknown` so an uncertain commit is never represented as a safe retry.
+
 ## [2.0.0] - 2026-07-15
 
 ### Added

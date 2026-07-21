@@ -73,10 +73,11 @@ def fake_executor():
 
 | File | Module Under Test | Key Tests |
 |------|------------------|-----------|
-| `tests/unit/test_connection.py` | `connection.py` | `fetch_all` returns first result set, `execute_batches` with mock pool, `_coerce_value` for memoryview/bytes, non-query returns row count |
+| `tests/unit/test_connection.py` | `connection.py` | Bounded reads, one-shot admin execution without retry, complete multi-result draining with per-result caps, connection isolation, value coercion |
 | `tests/unit/test_connection_pool.py` | `connection_pool.py` | Acquire creates new connection, acquire reuses pooled connection, release returns to queue, stale connection evicted, token refresh triggered at 45min, pool-at-capacity blocks, `close_all` drains |
 | `tests/unit/test_auth.py` | `auth.py` | `build_connection_arguments` for each auth mode, `obfuscate_secret` patterns, token struct packing format, SQL password mode skips token |
-| `tests/unit/test_server.py` | `server.py` | All tools registered, `_run_tool` returns error on exception, `_truncate_rows` limits rows, `_format_error` produces correct shape, tool timeout triggers `asyncio.TimeoutError` |
+| `tests/unit/test_server.py` | `server.py` | All tools registered, scoped DBA public contract, response error literal redaction, truncation, error shape, timeout handling |
+| `tests/unit/test_observability.py` | `observability.py` | SQL literal redaction including Unicode, escaped, multiple, and unterminated literals; connection and endpoint sanitisation |
 | `tests/unit/test_health.py` | `health.py` | Each health check category returns expected structure, threshold status evaluation, graceful handling when DMV is unavailable |
 | `tests/unit/test_capabilities.py` | `capabilities.py` | Each capability check handles success/failure, returns `{available: true/false}` |
 | `tests/unit/test_retry.py` | `retry.py` | Retries on transient error codes, does not retry non-transient errors, respects max_retries=0, exponential backoff timing, jitter applied |

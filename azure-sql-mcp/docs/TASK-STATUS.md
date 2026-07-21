@@ -268,7 +268,7 @@
 | 20.1 | Extract SQL Server error code from exceptions — SQLSTATE + native error code | `done` | — | 2026-04-01 | 2026-04-01 | `extract_sql_error_info()` in `observability.py` |
 | 20.2 | Row count telemetry — log rows returned per tool call; warn if > 10,000 | `done` | — | 2026-04-01 | 2026-04-01 | `_estimate_row_count` + warning log in `_run_tool` |
 | 20.3 | Query hash in logs — compute hash of normalized SQL for deduplication | `done` | — | 2026-04-01 | 2026-04-01 | `compute_query_hash()` in `observability.py` |
-| 20.4 | Sanitize error messages — strip connection strings, server names, IPs | `done` | — | 2026-04-01 | 2026-04-01 | `sanitize_error_message()` integrated into both `_run_tool` exception paths |
+| 20.4 | Sanitize error messages — strip SQL literals, connection strings, server names, IPs | `done` | — | 2026-04-01 | 2026-07-21 | `sanitize_error_message()` integrated into both `_run_tool` exception paths; shared literal redactor protects responses and audits |
 | 20.5 | Unit tests for observability enhancements | `done` | — | 2026-04-01 | 2026-04-01 | `test_observability.py`: 11 tests |
 
 ## Phase 21 — Ultimate MCP Hardening
@@ -276,7 +276,7 @@
 | # | Task | Status | Owner | Started | Completed | Notes |
 |---|------|--------|-------|---------|-----------|-------|
 | 21.1 | HTTP/SSE bearer auth | `done` | codex | 2026-07-01 | 2026-07-01 | `AZURE_SQL_MCP_BEARER_TOKEN` required for `sse`/`streamable-http`; FastMCP auth settings + `token_verifier` use constant-time comparison |
-| 21.2 | Admin write policy and audit | `done` | codex | 2026-07-01 | 2026-07-01 | `AZURE_SQL_WRITE_POLICY`, dry-run defaults, raw SQL limited to read-only SELECT batches, remote admin opt-in, JSONL audit with redacted SQL by default |
+| 21.2 | Admin write policy and audit | `done` | codex | 2026-07-01 | 2026-07-21 | `AZURE_SQL_WRITE_POLICY`, dry-run defaults, scoped DBA batches for existing databases, invariant create/drop-database rejection, remote admin opt-in, literal-redacted JSONL audit |
 | 21.3 | Structured output and token-safe artifacts | `done` | codex | 2026-07-01 | 2026-07-01 | Tools return structured dictionaries; raw SHOWPLAN XML defaults to bounded `azuresql-artifact://...` resource metadata |
 | 21.4 | Query Store plan enforcement workflow | `done` | codex | 2026-07-01 | 2026-07-01 | `review_plan_enforcement`, `dry_run_plan_action`, `apply_plan_action`, and dry-run `plan_enforcer_tick`; review windows flow into Query Store evidence |
 | 21.5 | Quality gates | `done` | codex | 2026-07-01 | 2026-07-01 | Added `py.typed`, ruff/pyright dev deps, CI gates for ruff, pyright, compileall, pytest, and `uv build` |
