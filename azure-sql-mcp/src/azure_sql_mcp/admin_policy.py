@@ -355,8 +355,8 @@ def _dynamic_module_argument_expression(
     if tokens[index].value not in {"EXEC", "EXECUTE"} or index + 1 >= len(tokens):
         return False, None
     module_index = index + 1
-    module_token = tokens[module_index]
-    if module_token.kind != "variable":
+    module_lexeme = tokens[module_index]
+    if module_lexeme.kind != "variable":
         return False, None
     cursor = module_index + 1
     has_return_status = (
@@ -368,16 +368,16 @@ def _dynamic_module_argument_expression(
         module_index = cursor + 1
         if module_index >= len(tokens) or tokens[module_index].kind != "variable":
             return False, None
-        module_token = tokens[module_index]
+        module_lexeme = tokens[module_index]
         cursor = module_index + 1
     if cursor >= len(tokens) or (
         tokens[cursor].kind == "symbol" and tokens[cursor].value == ";"
     ):
         return (True, []) if has_return_status else (False, None)
 
-    if module_token.value in unsafe_variables:
+    if module_lexeme.value in unsafe_variables:
         return True, None
-    module_name = variables.get(module_token.value)
+    module_name = variables.get(module_lexeme.value)
     if module_name is None or "\x00" in module_name:
         return True, None
     normalized_name = re.sub(r"[\[\]\s]", "", module_name).upper().split(".")[-1]
@@ -631,10 +631,10 @@ def _variable_has_opaque_write(tokens: list[_SqlToken], index: int) -> bool:
 def _dynamic_sql_expression(
     tokens: list[_SqlToken], index: int,
 ) -> list[_SqlToken] | None:
-    token = tokens[index]
+    execution_lexeme = tokens[index]
     cursor = index + 1
     wrapped = False
-    if token.value in {"EXEC", "EXECUTE"}:
+    if execution_lexeme.value in {"EXEC", "EXECUTE"}:
         if cursor >= len(tokens):
             return None
         if tokens[cursor].kind == "word" and tokens[cursor].value == "AS":
@@ -748,14 +748,14 @@ def _module_sql_argument_expression(
 def _statement_end(tokens: list[_SqlToken], index: int) -> int:
     depth = 0
     for cursor in range(index, len(tokens)):
-        token = tokens[cursor]
-        if token.kind != "symbol":
+        lexeme = tokens[cursor]
+        if lexeme.kind != "symbol":
             continue
-        if token.value == "(":
+        if lexeme.value == "(":
             depth += 1
-        elif token.value == ")":
+        elif lexeme.value == ")":
             depth = max(0, depth - 1)
-        elif token.value == ";" and depth == 0:
+        elif lexeme.value == ";" and depth == 0:
             return cursor
     return len(tokens)
 
@@ -765,16 +765,16 @@ def _expression_end(
 ) -> int:
     depth = 0
     for cursor in range(index, len(tokens)):
-        token = tokens[cursor]
-        if token.kind != "symbol":
+        lexeme = tokens[cursor]
+        if lexeme.kind != "symbol":
             continue
-        if token.value == "(":
+        if lexeme.value == "(":
             depth += 1
-        elif token.value == ")":
+        elif lexeme.value == ")":
             if depth == 0 and stop_at_closing:
                 return cursor
             depth = max(0, depth - 1)
-        elif depth == 0 and token.value in {",", ";"}:
+        elif depth == 0 and lexeme.value in {",", ";"}:
             return cursor
     return len(tokens)
 
@@ -788,35 +788,37 @@ def _literal_expression_text(
     found_value = False
     index = 0
     while index < len(tokens):
-        token = tokens[index]
-        if token.kind == "string":
-            parts.append(token.value)
+        lexeme = tokens[index]
+        if lexeme.kind == "string":
+            parts.append(lexeme.value)
             found_value = True
             index += 1
             continue
-        if token.kind == "identifier":
+        if lexeme.kind == "identifier":
             # With QUOTED_IDENTIFIER OFF, double-quoted tokens are strings. Treat
             # them as potential constant dynamic SQL while retaining identifier
             # handling everywhere outside an executed expression.
-            parts.append(token.value)
+            parts.append(lexeme.value)
             found_value = True
             index += 1
             continue
-        if token.kind == "variable":
-            parts.append(variables.get(token.value, "\x00"))
+        if lexeme.kind == "variable":
+            parts.append(variables.get(lexeme.value, "\x00"))
             found_value = True
             index += 1
             continue
-        if token.kind == "number":
+        if lexeme.kind == "number":
             # A varbinary literal can be implicitly converted to varchar and then
             # executed. Treat it as opaque instead of interpreting its hex bytes.
-            parts.append("\x00" if token.value.upper().startswith("0X") else token.value)
+            parts.append(
+                "\x00" if lexeme.value.upper().startswith("0X") else lexeme.value
+            )
             found_value = True
             index += 1
             continue
         if (
-            token.kind == "word"
-            and token.value in _CONSTANT_STRING_FUNCTIONS
+            lexeme.kind == "word"
+            and lexeme.value in _CONSTANT_STRING_FUNCTIONS
             and index + 1 < len(tokens)
             and tokens[index + 1].kind == "symbol"
             and tokens[index + 1].value == "("
@@ -828,7 +830,7 @@ def _literal_expression_text(
                 index += 1
                 continue
             function_value = _constant_function_text(
-                token.value,
+                lexeme.value,
                 tokens[index + 2 : close_index],
                 variables,
             )
@@ -836,7 +838,7 @@ def _literal_expression_text(
             found_value = True
             index = close_index + 1
             continue
-        if token.kind == "symbol" and token.value in {"+", "(", ")", "="}:
+        if lexeme.kind == "symbol" and lexeme.value in {"+", "(", ")", "="}:
             index += 1
             continue
         parts.append("\x00")
@@ -852,12 +854,12 @@ def _matching_closing_parenthesis(
 ) -> int | None:
     depth = 0
     for index in range(open_index, len(tokens)):
-        token = tokens[index]
-        if token.kind != "symbol":
+        lexeme = tokens[index]
+        if lexeme.kind != "symbol":
             continue
-        if token.value == "(":
+        if lexeme.value == "(":
             depth += 1
-        elif token.value == ")":
+        elif lexeme.value == ")":
             depth -= 1
             if depth == 0:
                 return index
