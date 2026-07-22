@@ -6,7 +6,7 @@ Public monorepo for Azure SQL assessment, migration, performance, and operations
 
 | Path | Use it for | Output |
 | --- | --- | --- |
-| [`azure-sql-mcp/`](azure-sql-mcp/) | Bounded queries, schema metadata, diagnostics, Query Store evidence, and gated administration | Structured evidence, plans, diffs, and MCP artifacts |
+| [`azure-sql-mcp`](https://github.com/akaalholdings/azure-sql-mcp) | Bounded queries, schema metadata, diagnostics, Query Store evidence, and gated administration | Structured evidence, plans, diffs, and MCP artifacts |
 | [`skills/`](skills/) | `sql_health_triage`, `sql_optimizer`, and `sql_plan_enforcer` workflows | Triage findings, optimization packs, and reviewed plan actions |
 | [`Assessment/`](Assessment/) | Read-only SQL Server inventory before migration | Sanitized inventory and target-fit evidence |
 | [`AzureMigration/Assessment/`](AzureMigration/Assessment/) | On-premises SQL Server target assessment | Target recommendations, sizing bands, blockers, and remediation plans |
@@ -24,7 +24,7 @@ Retired execution paths must remain absent. The repository integrity check fails
 | Inventory an on-premises SQL Server | [`Assessment/`](Assessment/) | Read-only collection |
 | Recommend Azure SQL Database, Managed Instance, or SQL VM | [`AzureMigration/Assessment/`](AzureMigration/Assessment/) | Local assessment only |
 | Review Azure SQL cost and utilization | [`AzureMigration/CostSavings/`](AzureMigration/CostSavings/) | Read-only Azure discovery and metrics |
-| Inspect Azure SQL schema, plans, waits, Query Store, or health | [`azure-sql-mcp/`](azure-sql-mcp/) | Restricted MCP mode is read-only by default |
+| Inspect Azure SQL schema, plans, waits, Query Store, or health | [`azure-sql-mcp`](https://github.com/akaalholdings/azure-sql-mcp) | Restricted MCP mode is read-only by default |
 | Run the performance loop | [`skills/`](skills/) | Triage is read-only; experiments and enforcement are separately gated |
 | Seed a lower-environment table | [`azsql-BulkCopy/`](azsql-BulkCopy/) | Destination writes require change control |
 | Automate Azure SQL vCore scaling | [`StepLadder/`](StepLadder/) | Azure resource changes only when `DRY_RUN=false` |
@@ -36,8 +36,9 @@ The active skills use `azure-sql-mcp` as their database execution channel. Evide
 Requires Python 3.12+ and [`uv`](https://docs.astral.sh/uv/). These commands use placeholders only and do not connect to a database until you run the server with real local configuration.
 
 ```bash
+git clone https://github.com/akaalholdings/azure-sql-mcp.git
 cd azure-sql-mcp
-uv sync --dev
+uv sync --dev --locked
 
 export AZURE_SQL_SERVER="your-server.database.windows.net"
 export AZURE_SQL_DEFAULT_DATABASE="your-database"
@@ -52,7 +53,7 @@ export AZURE_SQL_TOOL_GROUPS="core,performance"
 uv run azure-sql-mcp
 ```
 
-The default transport is local stdio. For VS Code Copilot setup, profiles, database policy, and troubleshooting, read [`azure-sql-mcp/docs/09-operations.md`](azure-sql-mcp/docs/09-operations.md) and [`azure-sql-mcp/README.md`](azure-sql-mcp/README.md).
+The default transport is local stdio. For VS Code Copilot setup, profiles, database policy, and troubleshooting, read the standalone [`operations guide`](https://github.com/akaalholdings/azure-sql-mcp/blob/main/docs/09-operations.md) and [`README`](https://github.com/akaalholdings/azure-sql-mcp#readme).
 
 ## Quick start: active skills
 
@@ -93,8 +94,9 @@ Run checks from the relevant directory. None of the normal commands below requir
 ### MCP
 
 ```bash
+git clone https://github.com/akaalholdings/azure-sql-mcp.git
 cd azure-sql-mcp
-uv sync --dev
+uv sync --dev --locked
 uv run ruff check src tests
 uv run pyright
 uv run python -m compileall -q src tests
@@ -123,7 +125,7 @@ python3 scripts/check_retired_paths.py
 python3 scripts/scan_content_secrets.py
 ```
 
-The combined workflow is [`sql-integrity.yml`](.github/workflows/sql-integrity.yml). It runs for changes to the public documentation, active skills, MCP package, workflows, integrity scripts, and retired-path deletions. It does not deploy or connect to a database.
+The combined workflow is [`sql-integrity.yml`](.github/workflows/sql-integrity.yml). It runs for changes to the public documentation, active skills, workflows, integrity scripts, and retired-path deletions. MCP package CI now runs in the standalone repository. Neither workflow deploys or connects to a database.
 
 ## State reporting
 
