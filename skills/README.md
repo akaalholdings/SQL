@@ -25,7 +25,7 @@ Do not use the plan-enforcement skill for query rewrites or index changes. Do no
 - VS Code with GitHub Copilot Chat.
 - Python 3.12 or newer.
 - A local checkout of this repository.
-- The MCP package under `azure-sql-mcp/`.
+- A separate local checkout of [`akaalholdings/azure-sql-mcp`](https://github.com/akaalholdings/azure-sql-mcp).
 - Azure SQL connection settings supplied locally, outside Git.
 - For active benchmarks or writes, a local database policy file that explicitly permits the target database and operation.
 
@@ -54,7 +54,7 @@ A single-skill install does not synchronize the other two. Use `install_all.py` 
 
 ## Configure MCP locally
 
-Configure the `azure-sql-mcp` stdio server in the local VS Code MCP configuration. Keep server names, database names, tenant information, usernames, passwords, tokens, and policy paths out of this public repository.
+Configure the `azure-sql-mcp` stdio server from its [standalone repository](https://github.com/akaalholdings/azure-sql-mcp) in the local VS Code MCP configuration. Keep server names, database names, tenant information, usernames, passwords, tokens, and policy paths out of this public repository.
 
 Required local values include:
 
@@ -69,7 +69,7 @@ AZURE_SQL_DATABASE_POLICY_FILE
 
 Use Entra authentication where available. If a credential is required, load it from the operating-system credential store or a protected local environment file; do not paste it into chat or commit it.
 
-The MCP README documents the complete server command, profile behavior, database-policy schema, and write gates.
+The [MCP README](https://github.com/akaalholdings/azure-sql-mcp#readme) documents the complete server command, profile behavior, database-policy schema, and write gates.
 
 ## Database policy
 
