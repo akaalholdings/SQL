@@ -25,7 +25,8 @@ Do not use the plan-enforcement skill for query rewrites or index changes. Do no
 - VS Code with GitHub Copilot Chat.
 - Python 3.12 or newer.
 - A local checkout of this repository.
-- A separate local checkout of [`akaalholdings/azure-sql-mcp`](https://github.com/akaalholdings/azure-sql-mcp).
+- A separate local checkout of `azure-sql-mcp` 2.1.0 or newer for measured
+  tuning, multi-hour budgets, leased index tests, and durable view changes.
 - Azure SQL connection settings supplied locally, outside Git.
 - For active benchmarks or writes, a local database policy file that explicitly permits the target database and operation.
 
@@ -54,22 +55,39 @@ A single-skill install does not synchronize the other two. Use `install_all.py` 
 
 ## Configure MCP locally
 
-Configure the `azure-sql-mcp` stdio server from its [standalone repository](https://github.com/akaalholdings/azure-sql-mcp) in the local VS Code MCP configuration. Keep server names, database names, tenant information, usernames, passwords, tokens, and policy paths out of this public repository.
+Run `azure-sql-mcp` through local stdio from VS Code. Create `.vscode/mcp.json` in the workspace, replace only the placeholders, and keep the file uncommitted:
 
-Required local values include:
-
-```text
-AZURE_SQL_SERVER
-AZURE_SQL_DEFAULT_DATABASE
-AZURE_SQL_ALLOWED_DATABASES
-AZURE_SQL_AUTH_MODE
-AZURE_SQL_PROFILE
-AZURE_SQL_DATABASE_POLICY_FILE
+```json
+{
+  "servers": {
+    "azure-sql-optimizer": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/azure-sql-mcp",
+        "run",
+        "azure-sql-mcp"
+      ],
+      "env": {
+        "AZURE_SQL_SERVER": "your-server.database.windows.net",
+        "AZURE_SQL_DEFAULT_DATABASE": "your-database",
+        "AZURE_SQL_ALLOWED_DATABASES": "your-database",
+        "AZURE_SQL_AUTH_MODE": "entra-default",
+        "AZURE_SQL_ACCESS_MODE": "restricted",
+        "AZURE_SQL_WRITE_POLICY": "disabled",
+        "AZURE_SQL_PROFILE": "optimizer",
+        "AZURE_SQL_TOOL_GROUPS": "core,performance",
+        "AZURE_SQL_DATABASE_POLICY_FILE": "/protected/path/azure-sql-policy.json"
+      }
+    }
+  }
+}
 ```
 
-Use Entra authentication where available. If a credential is required, load it from the operating-system credential store or a protected local environment file; do not paste it into chat or commit it.
+Use an Azure CLI login or managed identity for `entra-default`. Keep server names, database names, tenant information, usernames, passwords, tokens, and policy paths local. On first use, reload VS Code, enable the server in Copilot Chat, call `list_databases`, then call `check_capabilities`. Measured tuning requires `azure-sql-mcp` 2.1.0 or newer and `mcp_contract.performance_tuning=1`; restart-safe view work also requires `mcp_contract.durable_view_change=1`. Version 2.1.0 sizes the outer workflow timeout from the local per-request execution ceiling and the query timeout, then bounds it by the durable session deadline, so a policy-authorized multi-hour campaign is not cancelled by the old one-query wrapper. If either contract is missing, update `azure-sql-mcp` or stay in the optimizer's static, unmeasured mode. Select only a returned database that is in the configured allowlist.
 
-The [MCP README](https://github.com/akaalholdings/azure-sql-mcp#readme) documents the complete server command, profile behavior, database-policy schema, and write gates.
+For static rewrites, MCP and the policy file are optional. For measured rewrites, the selected policy entry must allow reads and benchmarks. For a disposable index or view test, change to a separate local server entry with `AZURE_SQL_PROFILE=sandbox`, `AZURE_SQL_TOOL_GROUPS=core,performance,admin`, local stdio, `AZURE_SQL_ACCESS_MODE=unrestricted`, `AZURE_SQL_WRITE_POLICY=apply`, and a non-production database policy. View apply also requires `AZURE_SQL_PERSIST_VIEW_SQL_STATE=true`; index testing does not. Never use that entry for production.
 
 ## Database policy
 
@@ -80,9 +98,44 @@ A policy entry controls:
 - read access;
 - repeated benchmarks;
 - disposable test indexes;
+- prepared sandbox view changes;
 - prepared plan actions;
 - maximum benchmark executions;
 - environment classification.
+
+Keep this synthetic policy outside Git and set its path in `AZURE_SQL_DATABASE_POLICY_FILE`:
+
+```json
+{
+  "version": 1,
+  "databases": {
+    "your-sandbox-database": {
+      "environment": "sandbox",
+      "allow_read": true,
+      "allow_benchmark": true,
+      "allow_test_indexes": true,
+      "allow_view_apply": true,
+      "allow_plan_apply": false,
+      "max_benchmark_executions": 80,
+      "max_tuning_candidates": 60,
+      "max_tuning_session_executions": 2000,
+      "max_tuning_session_minutes": 360
+    },
+    "your-production-database": {
+      "environment": "production",
+      "allow_read": true,
+      "allow_benchmark": false,
+      "allow_test_indexes": false,
+      "allow_view_apply": false,
+      "allow_plan_apply": false,
+      "max_benchmark_executions": 0,
+      "max_tuning_candidates": 0,
+      "max_tuning_session_executions": 0,
+      "max_tuning_session_minutes": 0
+    }
+  }
+}
+```
 
 Unknown databases fail closed for benchmarks, temporary indexes, and plan apply. Production should remain read-only unless a reviewed exception is deliberately configured. The policy file is local and uncommitted.
 
@@ -125,17 +178,23 @@ Expected behavior:
 ```text
 Use sql-optimizer with the optimizer profile. Open a tuning session for this SELECT.
 Test one change at a time across common, rare, NULL and boundary parameters.
+Use up to 360 minutes, 60 candidates, and 2000 executions if the local policy permits.
 Continue after losing candidates and return the full leaderboard and winning SQL.
 <synthetic query>
 ```
 
 Expected behavior:
 
-- defaults to at most 10 candidates, three screening runs, five finalist runs, four parameter cases, 80 executions, or 20 minutes;
+- uses the requested tuning budget; 10 candidates, 80 executions, and 20 minutes are compatibility defaults rather than a ceiling;
+- reads `check_capabilities.local_tuning_policy` and, for an open-ended “fastest version” request, uses the largest useful policy-authorized campaign instead of silently choosing 20 minutes;
+- can run a policy-authorized multi-hour campaign and stops only at the configured limit, exhausted credible candidates, or an evidence-based diminishing-return point;
 - executes each measured query once per sample;
-- uses duplicate- and order-aware equivalence;
+- binds every parameter value with its exact SQL type through `sp_executesql`;
+- uses a one-snapshot, duplicate- and order-aware full-result comparison for finalists;
 - records every candidate as improved, neutral, regressed, equivalence_failed, inconclusive, or cleanup_required;
 - does not let a slower index end the session.
+
+Rewrite screening costs six executions per parameter case and normally defers the full comparison. Finalist validation costs twelve per case, including the two-query comparison. Four finalist cases therefore cost 48 executions. Use a representative screening subset so the configured session budget explores several ideas before promoting finalists.
 
 ### Sandbox index test
 
@@ -145,7 +204,17 @@ Benchmark this disposable index candidate, enforce the lease, and confirm cleanu
 <synthetic query and candidate definition>
 ```
 
-The sandbox profile and database policy must both permit temporary indexes. Cleanup failure blocks another test and returns the lease plus rollback instructions.
+The sandbox profile and database policy must both permit temporary indexes. Screening uses A-B-A measurements at nine executions per case; a four-case finalist costs 60. The SQL is unchanged, so MCP checks complete result stability across the three DDL-separated phases and verifies that the expected index was used. Cleanup failure blocks another test and returns the lease plus rollback instructions.
+
+### Sandbox view test
+
+```text
+Use sql-optimizer. Prepare this view definition, show dependencies and exact rollback,
+then apply it only through the approved sandbox profile and verify the definition.
+<synthetic view body>
+```
+
+`prepare_view_change` is read-only in both profiles, but an optimizer preparation is preview-only and cannot cross into another MCP process. Re-prepare in the local sandbox with the same stable idempotency key, policy `allow_view_apply=true`, and `AZURE_SQL_PERSIST_VIEW_SQL_STATE=true`. That explicit opt-in stores the exact target and prior view definitions in the permission-restricted MCP state database so apply, verify, and rollback can recover after a restart. After an interruption, verify the existing durable change id; do not prepare against the possibly changed view. Changing a production view remains a separate owner-approved deployment.
 
 ### Plan review
 
@@ -161,7 +230,7 @@ Use sql-plan-enforcer. Prepare the reviewed action for this evidence id.
 Show the exact prior-state reference and verification contract; do not apply yet.
 ```
 
-Applying is a separate user-authorized step through an `enforcer-apply` server and a prepared intent id. Direct force, hint, unrestricted SQL, and raw apply paths are not valid skill workflows.
+Applying is a separate user-authorized step through a local stdio `enforcer-apply` server using unrestricted/apply posture, `AZURE_SQL_TOOL_GROUPS=core,performance,admin`, a database policy that permits the action, an open apply kill switch, and a prepared intent id. Direct force, hint, unrestricted SQL, and raw apply paths are not valid skill workflows.
 
 ## Inline/edit context
 
@@ -189,9 +258,12 @@ python3 scripts/copilot_optimizer_acceptance.py --print-prompt
 python3 scripts/copilot_optimizer_acceptance.py --response /tmp/copilot-response.md
 ```
 
-The validator requires a concrete SARGable rewrite labelled `unmeasured`, a
-semantic contract, the slower index recorded as `regressed`, and explicit
-continuation to the next experiment. It prints requirement names only on
+The validator extracts only fenced `sql`/`tsql` blocks and validates the actual
+synthetic rewritten query: complete SELECT shape, the typed SARGable lower and
+upper bounds, and removal of the wrapped date conversion. Prose, a non-SQL
+fence, or the unchanged source query cannot satisfy the SQL requirement. It
+also requires `unmeasured`, the semantic contract, the slower index as
+`regressed`, and explicit continuation. It prints requirement names only on
 failure and never echoes the response.
 
 ```bash
@@ -207,8 +279,11 @@ Before replacement, the installer archives prior managed bundles as well as reti
 From the repository root:
 
 ```bash
-uv run --with pytest pytest -q skills
-uv run --with ruff ruff check skills
+uv run --with pytest pytest -q skills scripts/tests
+uv run --with ruff ruff check skills scripts
+python3 scripts/check_markdown_links.py
+python3 scripts/check_retired_paths.py
+python3 scripts/scan_content_secrets.py
 ```
 
 Verify a clean isolated install:

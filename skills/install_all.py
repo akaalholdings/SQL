@@ -14,10 +14,9 @@ import tempfile
 import uuid
 from collections.abc import Sequence
 
-
 ROOT = pathlib.Path(__file__).resolve().parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
-RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))
+RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 HOST_SKILL_DIRS = (
     pathlib.Path(".copilot/skills"),
     pathlib.Path(".claude/skills"),
@@ -224,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
             backup_root=backup_root,
             retired_wrapper=wrapper,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - CLI boundary restores prior bundles
         print(f"Installation failed; prior bundles restored: {exc}", file=sys.stderr)
         return 1
 

@@ -11,7 +11,6 @@ import sys
 import tempfile
 import uuid
 
-
 SKILL_NAME = "sql_optimizer"
 SKILL_FILES = ("SKILL.md",)
 SKILL_DIRS: tuple[str, ...] = ()
@@ -85,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         destination = install(resolve_dest(args.dest))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - CLI boundary reports install failure
         print(f"Install failed: {exc}", file=sys.stderr)
         return 1
     print(f"Installed {SKILL_NAME} to {destination}")

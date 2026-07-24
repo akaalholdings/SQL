@@ -3,7 +3,6 @@ from __future__ import annotations
 import pathlib
 import re
 
-
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
@@ -39,6 +38,9 @@ def test_prepared_intent_lifecycle_is_complete() -> None:
 
 def test_apply_is_fail_closed_and_idempotent() -> None:
     for phrase in (
+        "local stdio `enforcer-apply`",
+        "`AZURE_SQL_TOOL_GROUPS=core,performance,admin`",
+        "unrestricted/apply posture",
         "evidence hash",
         "exact prior force/hint state",
         "database policy",

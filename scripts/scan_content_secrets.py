@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan repository content for high-confidence credential patterns.
+"""Scan repository content for credentials and runtime knowledge dependencies.
 
 The output intentionally contains only a detector name and file:line location.
 Values are never included in findings.
@@ -12,7 +12,6 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 _SKIP_DIRS = {
@@ -110,6 +109,28 @@ _ENV_ASSIGNMENT = re.compile(
     r"^\s*(?:export\s+)?[A-Z][A-Z0-9_]*(?:PASSWORD|PASSWD|PWD|SECRET|TOKEN|API[_-]?KEY)"
     r"\s*=\s*(?P<value>[^\s#;]+)"
 )
+_KNOWLEDGE_LINK = re.compile(
+    r"https?://(?:learn\.microsoft\.com|aka\.ms|techcommunity\.microsoft\.com|"
+    r"stackoverflow\.com|sqlperformance\.com|brentozar\.com)(?:/|\b)",
+    re.IGNORECASE,
+)
+_LOCAL_USER_PATH = re.compile(
+    r"(?:^|[\s`'\"])(?:"
+    r"/(?:Users|home)/[^/\s`'\"]+/"
+    r"|[A-Z]:[\\/]+Users[\\/]+[^\\/\s`'\"]+[\\/]"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _prohibits_external_knowledge(path: Path, root: Path) -> bool:
+    """Return whether this instruction surface must remain self-contained."""
+
+    relative = path.relative_to(root)
+    return path.name == "SKILL.md" or relative in {
+        Path("README.md"),
+        Path("skills/README.md"),
+    }
 
 
 def _assignment_findings(line: str) -> bool:
@@ -117,9 +138,7 @@ def _assignment_findings(line: str) -> bool:
         if not _is_placeholder(match.group("value")):
             return True
     match = _ENV_ASSIGNMENT.search(line)
-    if match and not _is_placeholder(match.group("value")):
-        return True
-    return False
+    return bool(match and not _is_placeholder(match.group("value")))
 
 
 def scan_files(root: Path = REPO_ROOT) -> list[Finding]:
@@ -143,6 +162,10 @@ def scan_files(root: Path = REPO_ROOT) -> list[Finding]:
                     findings.append(Finding(detector, path, number))
             if _assignment_findings(line):
                 findings.append(Finding("secret-assignment", path, number))
+            if _prohibits_external_knowledge(path, root) and _KNOWLEDGE_LINK.search(line):
+                findings.append(Finding("external-knowledge-reference", path, number))
+            if _LOCAL_USER_PATH.search(line):
+                findings.append(Finding("local-user-path", path, number))
     return findings
 
 
@@ -156,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
         for finding in findings:
             print(f"{finding.detector} {finding.path.relative_to(root)}:{finding.line}")
         return 1
-    print("content secret scan ok")
+    print("repository content scan ok")
     return 0
 
 

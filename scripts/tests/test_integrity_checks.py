@@ -39,8 +39,10 @@ class RetiredPathTests(unittest.TestCase):
     def test_reports_retired_directory_and_reference(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            retired_name = "".join(("connect", "or"))
-            retired_reference = "".join(("query", "_", "geneva", "_", "db"))
+            retired_name = "".join(("connect", "or"))  # noqa: FLY002
+            retired_reference = "".join(  # noqa: FLY002
+                ("query", "_", "geneva", "_", "db")
+            )
             (root / retired_name).mkdir()
             (root / "README.md").write_text(retired_reference + "\n", encoding="utf-8")
             issues = check_retired_paths.check_retired_paths(root)
@@ -88,6 +90,53 @@ class SecretScanTests(unittest.TestCase):
                 "AZURE_SQL_MCP_BEARER_TOKEN=replace-with-a-long-random-token\n",
                 encoding="utf-8",
             )
+            self.assertEqual(scan_content_secrets.scan_files(root), [])
+
+    def test_reports_external_knowledge_and_local_user_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            knowledge_link = "".join(  # noqa: FLY002
+                ("https://learn.", "microsoft.com/example")
+            )
+            local_path = "/".join(  # noqa: FLY002
+                ("", "Users", "example", "Downloads", "tuning.sql")
+            )
+            windows_path = "\\".join(  # noqa: FLY002
+                ("C:", "Users", "example", "Downloads", "tuning.sql")
+            )
+            windows_slash_path = "/".join(  # noqa: FLY002
+                ("C:", "Users", "example", "Downloads", "tuning.sql")
+            )
+            (root / "SKILL.md").write_text(
+                f"Read {knowledge_link}\n"
+                f"Source: {local_path}\n"
+                f"Source: {windows_path}\n"
+                f"Source: {windows_slash_path}\n",
+                encoding="utf-8",
+            )
+            findings = scan_content_secrets.scan_files(root)
+            self.assertEqual(
+                [(item.detector, item.line) for item in findings],
+                [
+                    ("external-knowledge-reference", 1),
+                    ("local-user-path", 2),
+                    ("local-user-path", 3),
+                    ("local-user-path", 4),
+                ],
+            )
+
+    def test_external_knowledge_rule_is_limited_to_instruction_surfaces(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "docs").mkdir()
+            knowledge_link = "".join(  # noqa: FLY002
+                ("https://learn.", "microsoft.com/example")
+            )
+            (root / "docs" / "research.md").write_text(
+                knowledge_link + "\n",
+                encoding="utf-8",
+            )
+
             self.assertEqual(scan_content_secrets.scan_files(root), [])
 
 

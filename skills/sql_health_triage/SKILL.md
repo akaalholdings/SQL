@@ -86,6 +86,8 @@ Recommend human action with evidence. Never terminate a session or emit an execu
 ### Resource saturation
 
 - Resource limits first; then CPU, data I/O, log I/O, workers/sessions, and storage history.
+- Treat `sys.dm_db_resource_stats` as current-database evidence at 15-second grain with roughly one hour of retention. Treat `sys.resource_stats` as five-minute, roughly 14-day logical-server history collected from `master`. Do not merge their windows or percentages as if they were the same series.
+- Resource percentages are relative to the database or elastic-pool service objective, not absolute host utilization.
 - Top queries and waits over the same windows.
 - Distinguish sustained saturation, spikes, log-rate governance, concurrency pressure, and one dominant query.
 
@@ -100,6 +102,7 @@ Do not infer a query cause from a database-level peak without matching query/wai
 ### Plan regression or parameter sensitivity
 
 - Query Store plan/runtime history by plan and bucket.
+- Query Store and database wait history omit currently executing work until it completes or times out. Use current requests/waiting tasks for in-flight evidence, and record failover/reset boundaries for cumulative database wait statistics.
 - Forced/hinted state and ownership, including Automatic Tuning.
 - Non-overlapping comparison windows with matching provenance.
 
