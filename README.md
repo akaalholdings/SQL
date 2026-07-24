@@ -53,7 +53,13 @@ export AZURE_SQL_TOOL_GROUPS="core,performance"
 uv run azure-sql-mcp
 ```
 
-The default transport is local stdio. For VS Code Copilot setup, profiles, database policy, and troubleshooting, read the standalone [`operations guide`](https://github.com/akaalholdings/azure-sql-mcp/blob/main/docs/09-operations.md) and [`README`](https://github.com/akaalholdings/azure-sql-mcp#readme).
+The default transport is local stdio. The optimizer's complete VS Code Copilot configuration, profile gates, synthetic policy, clean-room acceptance procedure, and Azure SQL tuning knowledge are self-contained in [`skills/README.md`](skills/README.md) and the installed skill.
+
+After connecting, call `check_capabilities`. Measured optimization requires
+`mcp_contract.performance_tuning=1`; restart-safe view workflows also require
+`mcp_contract.durable_view_change=1`. These contracts are published by
+`azure-sql-mcp` 2.1.0 and newer. An older MCP remains usable for static rewrite
+analysis only.
 
 ## Quick start: active skills
 
@@ -93,27 +99,41 @@ Run checks from the relevant directory. None of the normal commands below requir
 
 ### MCP
 
+From this repository root, keep the companion checkout as a sibling directory:
+
 ```bash
-git clone https://github.com/akaalholdings/azure-sql-mcp.git
-cd azure-sql-mcp
-uv sync --dev --locked
-uv run ruff check src tests
-uv run pyright
-uv run python -m compileall -q src tests
-uv run pytest -q
-uv build
+git clone https://github.com/akaalholdings/azure-sql-mcp.git ../azure-sql-mcp
+(
+  cd ../azure-sql-mcp
+  uv sync --dev --locked
+  uv run ruff check src tests scripts
+  uv run pyright
+  uv run python -m compileall -q src tests scripts
+  uv run pytest -q
+  uv build
+  uv run python scripts/check_markdown_links.py
+  uv run python scripts/verify_repository_content.py
+)
 ```
 
 ### Skills
 
 ```bash
-cd skills
-python3 -m pytest -q sql_optimizer/tests sql_plan_enforcer/tests sql_health_triage/tests tests
-python3 -m compileall -q sql_optimizer sql_plan_enforcer sql_health_triage install_all.py check_installed_parity.py
-tmp_dir="$(mktemp -d)"
-python3 install_all.py --dest "$tmp_dir"
-python3 check_installed_parity.py --dest "$tmp_dir"
-rm -rf "$tmp_dir"
+(
+  cd skills
+  python3 -m pytest -q sql_optimizer/tests sql_plan_enforcer/tests sql_health_triage/tests tests
+  python3 -m compileall -q sql_optimizer sql_plan_enforcer sql_health_triage install_all.py check_installed_parity.py
+  python3 -m ruff check . ../scripts
+  tmp_dir="$(mktemp -d)"
+  HOME="$tmp_dir/home" python3 install_all.py \
+    --dest "$tmp_dir/skills" \
+    --backup-root "$tmp_dir/backups" \
+    --retired-wrapper "$tmp_dir/bin/obsolete-wrapper"
+  HOME="$tmp_dir/home" python3 check_installed_parity.py \
+    --dest "$tmp_dir/skills" \
+    --retired-wrapper "$tmp_dir/bin/obsolete-wrapper"
+  rm -rf "$tmp_dir"
+)
 ```
 
 ### Repository integrity

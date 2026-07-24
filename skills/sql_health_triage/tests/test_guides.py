@@ -3,7 +3,6 @@ from __future__ import annotations
 import pathlib
 import re
 
-
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 

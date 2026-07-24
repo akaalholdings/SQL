@@ -75,7 +75,7 @@ Preparation returns intent id, immutable action summary, exact-prior-state refer
 
 ## 4. Apply prepared action
 
-Call `apply_prepared_plan_action` only when the user explicitly authorizes that exact intent in the current interaction and `enforcer-apply` is active.
+Call `apply_prepared_plan_action` only when the user explicitly authorizes that exact intent in the current interaction and a local stdio `enforcer-apply` server is active with unrestricted/apply posture, `AZURE_SQL_TOOL_GROUPS=core,performance,admin`, database-policy permission, and the apply kill switch open.
 
 MCP rechecks evidence hash, idempotency, expiry, the global kill switch, server/database policy, ownership, current Query Store state, and prior-state precondition immediately before mutation. Changed preconditions return hold/review; do not replace silently.
 

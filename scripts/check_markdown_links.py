@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 _SKIP_DIRS = {
     ".git",
@@ -128,9 +127,13 @@ def _check_target(markdown_path: Path, line: int, target: str, root: Path) -> Li
     if not candidate.exists():
         return LinkIssue(markdown_path, line, target, "target does not exist")
     fragment_path = markdown_path if not relative_target else candidate
-    if fragment and fragment_path.is_file() and fragment_path.suffix.lower() == ".md":
-        if fragment not in _heading_anchors(fragment_path):
-            return LinkIssue(markdown_path, line, target, "heading fragment does not exist")
+    if (
+        fragment
+        and fragment_path.is_file()
+        and fragment_path.suffix.lower() == ".md"
+        and fragment not in _heading_anchors(fragment_path)
+    ):
+        return LinkIssue(markdown_path, line, target, "heading fragment does not exist")
     return None
 
 

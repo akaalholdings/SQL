@@ -10,10 +10,9 @@ import pathlib
 import sys
 from collections.abc import Sequence
 
-
 ROOT = pathlib.Path(__file__).resolve().parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
-RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))
+RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 HOST_SKILL_DIRS = (
     pathlib.Path(".copilot/skills"),
     pathlib.Path(".claude/skills"),

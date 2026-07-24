@@ -30,7 +30,7 @@ jobs:
         run: python scripts/check_markdown_links.py
       - name: Check retired paths and references
         run: python scripts/check_retired_paths.py
-      - name: Scan content for secrets
+      - name: Scan repository content
         run: python scripts/scan_content_secrets.py
 
   skills:

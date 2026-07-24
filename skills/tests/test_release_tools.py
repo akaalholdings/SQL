@@ -6,12 +6,11 @@ import stat
 
 import pytest
 
-
 SKILLS_ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPO_ROOT = SKILLS_ROOT.parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
-RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))
-RETIRED_COMPONENT = "".join(("con", "nector"))
+RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
+RETIRED_COMPONENT = "".join(("con", "nector"))  # noqa: FLY002
 
 
 def _load(name: str, path: pathlib.Path):
