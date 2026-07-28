@@ -30,7 +30,7 @@ def test_optimizer_covers_all_six_candidate_families() -> None:
         "Family 3: aggregation, windowing, ordering, and row goals",
         "Family 4: cardinality, parameters, and statistics",
         "Family 5: indexes",
-        "Family 6: combined winners",
+        "Family 6: combined rewrites and rewrite-plus-index lineage",
     )
     for heading in expected:
         assert heading in TEXT
@@ -108,7 +108,7 @@ def test_optimizer_is_compact_and_has_operational_pattern_cards() -> None:
         "Family 3: aggregation, windowing, ordering, and row goals",
         "Family 4: cardinality, parameters, and statistics",
         "Family 5: indexes",
-        "Family 6: combined winners",
+        "Family 6: combined rewrites and rewrite-plus-index lineage",
         "Parameter compilation and intelligent query processing",
         "Ordinary, filtered, computed, and indexed-view options",
         "Plan reading discipline",
@@ -245,7 +245,9 @@ def test_optimizer_requires_runtime_and_schema_fingerprints_before_database_tool
     assert runtime_call in TEXT
     for phrase in (
         "Initialize the MCP contract",
-        "Complete this sequence before\n`explain_query` or any case/session tool",
+        "returned\n`tool_groups`",
+        "do not infer exposed groups",
+        "Complete this sequence before `explain_query` or any\ncase/session tool",
         "runtime_fingerprint",
         "tool_schema_fingerprint",
         "sanitized_config_fingerprint",
@@ -286,27 +288,55 @@ def test_optimizer_gates_volatile_and_unordered_proof_claims() -> None:
         "`NEWID`",
         "nondeterministically seeded `RAND`",
         "non-repeatable `TABLESAMPLE`",
-        "deterministic `RAND` seed is allowed",
+        "literal\n`RAND` seed is allowed",
         "ordered `TOP`",
         "order-sensitive window expression",
         "verified unique total",
         "classification=proof_contract_required",
         "before\nfinalists",
         "`performance_only`",
+        "promising proof-required screening\ncandidate",
+        "complete finalist performance workload",
+        "Do not use `prove_equivalence=false` as a proof bypass",
+        "evidence-backed, nonzero executions",
+        "deployment as `not ready`",
+        "Deterministic parallel cases",
+        "cannot upgrade proof scope",
         "proxy must never be used to overclaim",
-        "no deterministic proof input",
     ):
         assert phrase in TEXT
 
 
-def test_optimizer_requires_parent_lineage_for_combined_rewrite_and_index() -> None:
+def test_optimizer_matches_mcp_objectives_and_database_aware_preflight() -> None:
+    for objective in ("elapsed_time", "cpu", "logical_reads", "physical_reads"):
+        assert f"`{objective}`" in TEXT
+    assert "call `check_equivalence_preflight(sql,database_name)`" in TEXT
+    assert "baseline and each" in TEXT
+
+
+def test_optimizer_distinguishes_combined_rewrite_from_rewrite_plus_index_lineage() -> None:
     for phrase in (
-        "child `combined` candidate",
-        "artifact_ref` exactly `candidate:<proven-parent-id>",
-        "proven `improved` finalist state",
+        "combined multi-family rewrite as `strategy=combined`",
+        "with no parent lineage",
+        "`strategy=rewrite_plus_index`",
+        "artifact_ref` exactly `candidate:<parent-id>",
+        "evidence-backed `performance_only` finalist",
         "same session",
-        "No unproven, neutral, regressed, performance-only, or cross-session parent",
+        "`parent_equivalence=unproven`",
+        "an improving child remains `performance_only`",
+        "can never become proven, `improved`, or deploy-ready",
+        "cross-session parents are ineligible",
         "runs only through `benchmark_index_candidate` with `phase=finalist`",
+    ):
+        assert phrase in TEXT
+
+
+def test_optimizer_defaults_to_proven_selection_and_requires_explicit_opt_in() -> None:
+    for phrase in (
+        "`selection_scope=proven` by default",
+        "explicit user authorization",
+        "`selection_scope=performance_only`",
+        "never implies equivalence or deployment approval",
     ):
         assert phrase in TEXT
 

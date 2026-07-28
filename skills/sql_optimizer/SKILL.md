@@ -22,8 +22,10 @@ Start from the query text. Produce safe concrete rewrite candidates before plan 
 ## Runtime contract gate
 
 Initialize the MCP contract by calling `check_runtime_status`, then
-`list_databases`, then `check_capabilities`. Complete this sequence before
-`explain_query` or any case/session tool. Record the returned `runtime_fingerprint`,
+`list_databases`, then `check_capabilities`. Read the returned
+`tool_groups` before selecting tools; do not infer exposed groups
+from the profile name. Complete this sequence before `explain_query` or any
+case/session tool. Record the returned `runtime_fingerprint`,
 `tool_schema_fingerprint`, `sanitized_config_fingerprint`, active profile, and
 tool groups.
 Require the returned `runtime_fingerprint`, `tool_schema_fingerprint`, and
@@ -60,9 +62,10 @@ Keep these states distinct in prose and in the MCP leaderboard:
 - **Static candidate**: complete SQL generated from text; no MCP proof; all metrics are `not collected`.
 - **Measured candidate**: registered with `add_tuning_candidate` and screened by MCP; report only returned medians, spread, objective deltas, plan evidence, and equivalence status.
 - **Finalist**: a measured candidate that merits the finalist phase after screening; re-run it interleaved across the selected buckets.
+- **Performance-only outcome**: an explicitly selected `performance_only` result; report its returned performance classification and selected objective, but set equivalence to `not proven` and deployment to `not ready`.
 - **Deployable winner**: a finalist with full supported equivalence, improvement beyond observed noise, no material bucket regression, known rollback, complete cleanup, and a written deployment/verification handoff. It is never implied by a static or screening result.
 
-The session outcome may be `no_change`, `inconclusive`, or a validated winner. Never convert an unavailable, truncated, timed-out, or unmeasured value into zero, a percentage, or a claim of improvement.
+The session outcome may be `no_change`, `performance_only`, `inconclusive`, or a validated winner. Never convert an unavailable, truncated, timed-out, or unmeasured value into zero, a percentage, or a claim of improvement.
 
 ## Freeze the semantic contract
 
@@ -360,13 +363,18 @@ Interpret the query inside its Azure SQL Database limits:
 - detect Automatic Tuning ownership and do not silently compete with automatic force-plan or index actions;
 - use database-scoped configuration and supported Query Store controls. Do not recommend instance trace flags, SQL Server service changes, or instance tempdb file layout for Azure SQL Database.
 
-### Family 6: combined winners
+### Family 6: combined rewrites and rewrite-plus-index lineage
 
-- **Trigger:** a rewrite has a proven `improved` finalist state and a complementary index hypothesis remains worth testing.
-- **Safe rewrite/action:** register the rewrite-plus-index as a child `combined` candidate with `artifact_ref` exactly `candidate:<proven-parent-id>`, then measure the index's marginal A-B-A effect against that proven rewrite parent.
-- **Preconditions:** the referenced parent is in the same session, is an improved finalist with complete supported equivalence, and has stable SQL/database/runtime fingerprints. No unproven, neutral, regressed, performance-only, or cross-session parent may create the child.
-- **Counterexample/risk:** a good rewrite plus a good index can duplicate work, change join order, or regress another bucket; never add metrics from separate runs.
-- **MCP evidence:** complete `get_tuning_session` lineage, the child `artifact_ref`, parent and child evidence ids, per-bucket A-B-A deltas, equivalence, and sandbox cleanup state.
+- **Trigger:** two or more safe rewrite families interact.
+- **Safe rewrite/action:** register a combined multi-family rewrite as `strategy=combined` with no parent lineage and benchmark it with `benchmark_tuning_candidate`.
+- **Preconditions:** every combined rewrite preserves the frozen contract; measure its complete SQL as one candidate and do not add metrics from separate runs.
+- **Counterexample/risk:** combined rewrites can hide which change caused a regression or alter fan-out, order, or NULL behavior.
+- **MCP evidence:** candidate strategy, complete SQL fingerprint, per-bucket result/equivalence evidence, and plan deltas.
+- **Trigger:** a proven `improved` finalist or an evidence-backed `performance_only` finalist remains worth testing with a temporary index.
+- **Safe rewrite/action:** register the `rewrite_plus_index` lineage with `strategy=rewrite_plus_index` and `artifact_ref` exactly `candidate:<parent-id>`, then run only `benchmark_index_candidate` for the parent's marginal A-B-A effect.
+- **Preconditions:** the parent is in the same session, is either proven or has complete nonzero performance-only finalist evidence, and has stable SQL/database/runtime fingerprints. A performance-only parent propagates `parent_equivalence=unproven`; an improving child remains `performance_only` and can never become proven, `improved`, or deploy-ready. Neutral, regressed, equivalence-failed, inconclusive, cleanup-required, or cross-session parents are ineligible.
+- **Counterexample/risk:** a good rewrite plus a good index can duplicate work, change join order, or regress another bucket; lineage never upgrades index evidence into rewrite proof.
+- **MCP evidence:** `get_tuning_session` lineage, parent/child evidence ids, per-bucket A-B-A deltas, equivalence scope, and sandbox cleanup state.
 
 ### Views and deployment handoff
 
@@ -381,13 +389,13 @@ Interpret the query inside its Azure SQL Database limits:
 Use the explicit case/session tools so the leaderboard is complete. Compatibility tools `tune_query` and `benchmark_query_rewrite` may be used only when the server exposes no explicit equivalent and must still return the same states and evidence.
 
 1. **Static pass:** freeze the contract, inspect every pattern card, and return complete unmeasured SQL before calling MCP.
-2. **Select database and verify the MCP contract:** follow the runtime contract gate, then use only the user-selected database in the `list_databases` allowlist. Require `mcp_contract.performance_tuning=1` before opening a measured case. Read `local_tuning_policy` for the actual candidate, execution, time, and per-request ceilings. If the contract is absent or incompatible, remain in static mode, return concrete unmeasured rewrites, and identify the MCP upgrade gap. Unknown or unselected databases fail closed.
-3. **Open case:** call `start_performance_case` with the unchanged baseline SQL, objective, and at most four named parameter cases. Each case must contain one exact value and declared SQL type for every detected parameter. The same SQL and database must identify the case.
+2. **Select database and verify the MCP contract:** follow the runtime contract gate, use only the user-selected database in the `list_databases` allowlist, and call `check_equivalence_preflight(sql,database_name)` for the baseline before measured equivalence work. Require `mcp_contract.performance_tuning=1` before opening a measured case. Read `local_tuning_policy` for the actual candidate, execution, time, and per-request ceilings. If the contract is absent or incompatible, remain in static mode, return concrete unmeasured rewrites, and identify the MCP upgrade gap. Unknown or unselected databases fail closed.
+3. **Open case:** call `start_performance_case` with the unchanged baseline SQL and exactly one of the four supported objectives: `elapsed_time`, `cpu`, `logical_reads`, or `physical_reads`, plus at most four named parameter cases. Each case must contain one exact value and declared SQL type for every detected parameter. The same SQL and database must identify the case.
 4. **Collect evidence:** call `collect_performance_evidence` with the case id, the same baseline SQL, and a caller-generated idempotency key, normally `execute_query=false`. For an active parameterized sample, set `execute_query=true` only with one exact typed `parameter_case`; otherwise fail closed. On a retryable collection failure, retry `collect_performance_evidence` exactly once with the same request and same idempotency key. Then call `get_performance_case` to retrieve persisted case evidence even when collection reported an error. Continue only when the core benchmark/comparison path works and every missing collector is recorded as an explicit gap; otherwise remain `inconclusive`. Capture availability, collection window, truncation, units, provenance, stable query identity, resource pressure, statistics, waits, and parameter sensitivity.
 5. **Start session:** call `start_tuning_session` once. Pass the requested time, candidate, and execution budget only when each is within `local_tuning_policy`; otherwise use or report the exact policy cap. Do not create replacement sessions to evade a budget.
-6. **Register and screen:** for each single material change call `add_tuning_candidate` with complete candidate SQL and exactly one strategy: `predicate`, `join`, `aggregation`, `cardinality`, `index`, or `combined`. For `predicate`, `join`, `aggregation`, and `cardinality`, call `benchmark_tuning_candidate` with `phase=screening`, the same baseline, candidate, buckets, and `compare_order` matching the contract. For `index`, retain the unchanged query SQL, switch to the gated sandbox workflow, and call only `benchmark_index_candidate`; it owns DDL, A-B-A measurements, the lease, and cleanup. A rewrite-plus-index `combined` child is registered only after its rewrite parent is an improved, proven finalist, must pass `artifact_ref=candidate:<proven-parent-id>`, must use the exact parent rewrite SQL, and runs only through `benchmark_index_candidate` with `phase=finalist`.
+6. **Register and screen:** for each single material change call `add_tuning_candidate` with complete candidate SQL and exactly one strategy: `predicate`, `join`, `aggregation`, `cardinality`, `index`, `combined`, or `rewrite_plus_index`. For `predicate`, `join`, `aggregation`, `cardinality`, and `combined`, call `benchmark_tuning_candidate` with `phase=screening`, the same baseline, candidate, buckets, and `compare_order` matching the contract; the objective remains the one recorded on the case. For `index`, retain the unchanged query SQL, switch to the gated sandbox workflow, and call only `benchmark_index_candidate`; it owns DDL, A-B-A measurements, the lease, and cleanup. A `rewrite_plus_index` child is allowed only after an improved proven finalist or evidence-backed performance-only finalist parent in the same session, must pass `artifact_ref=candidate:<parent-id>`, must use the exact parent rewrite SQL, and runs only through `benchmark_index_candidate` with `phase=finalist`. Preserve unproven parent lineage on the child.
 7. **Reconcile:** after each result call `get_tuning_session`; preserve every candidate, returned evidence id, terminal state, metric provenance, plan delta, equivalence result, execution count, and continuation flag.
-8. **Finalize:** re-run only credible improved candidates as `phase=finalist`; call `compare_plan_summaries` for plan detail as needed. Call `finalize_tuning_session` with the selected finalist id or `selected_candidate_id=null` and an exact stopping reason. Finalization must return the complete leaderboard; unresolved candidates become `inconclusive`.
+8. **Finalize:** re-run only credible improved candidates as `phase=finalist`; call `compare_plan_summaries` for plan detail as needed. Call `finalize_tuning_session` with the selected finalist id or `selected_candidate_id=null` and an exact stopping reason. Omit `selection_scope` or pass `selection_scope=proven` by default. Select a terminal performance-only finalist only after explicit user authorization by passing `selection_scope=performance_only`; this never implies equivalence or deployment approval. Finalization must return the complete leaderboard; unresolved candidates become `inconclusive`.
 
 ### Profiles and adaptive budget
 
@@ -413,7 +421,8 @@ An index benchmark runs unchanged SQL across A-B-A phases separated by DDL, so i
 
 A bounded sample, row-limit truncation, different snapshots for a rewrite, unsupported type metadata, duplicate column ambiguity, timeout, or unavailable bucket is inconclusive, never proven equivalent. Any rewrite mismatch is `equivalence_failed` and cannot win.
 
-Run the server's semantic preflight before finalist comparisons. Queries using
+Run `check_equivalence_preflight(sql,database_name)` for the baseline and each
+candidate before finalist comparisons. Queries using
 `GETDATE` or another current-time function, `NEWID`, unseeded or
 nondeterministically seeded `RAND`, non-repeatable `TABLESAMPLE`, or a row limit
 (`TOP`, `OFFSET/FETCH`) whose `ORDER BY` is absent or not backed by a verified
@@ -421,17 +430,22 @@ unique total order must be reported as
 `classification=proof_contract_required` before
 finalists. The same gate applies to an order-sensitive window expression whose
 `ORDER BY` lacks a verified unique total order. An ordered `TOP` remains
-proof-required until its `ORDER BY` is backed by that proof. A literal or otherwise
-deterministic `RAND` seed is allowed. Unsafe queries may continue as
-`performance_only` when the core benchmark is usable; report only the returned
-performance measurements. That classification cannot prove semantic equivalence
-or deployability. Runtime speed, plan similarity, result counts, and any other
-proxy must never be used to overclaim semantic proof. The current MCP contract has
-no deterministic proof input; the candidate remains performance-only.
+proof-required until its `ORDER BY` is backed by that proof. A literal
+`RAND` seed is allowed. Keep a promising proof-required screening
+candidate eligible for the complete finalist performance workload; skip only
+the impossible semantic comparison.
+Do not use `prove_equivalence=false` as a proof bypass. A performance-only
+finalist requires evidence-backed, nonzero executions and measured improvement;
+report equivalence as `not proven` and deployment as `not ready`. Select it only
+through `finalize_tuning_session(selection_scope=performance_only)`. Without that
+explicit finalization scope it cannot win. Deterministic parallel cases are
+supporting evidence only and cannot upgrade proof scope. Runtime speed, plan
+similarity, result counts, and any other proxy must never be used to overclaim
+semantic proof.
 
 ### Terminal states
 
-Every measured candidate ends in exactly one of `improved`, `neutral`, `regressed`, `equivalence_failed`, `inconclusive`, or `cleanup_required`. A timeout is normally `inconclusive`; an unconfirmed index/view cleanup is `cleanup_required`. A slower or failed index rejects only that index candidate. It never erases the paired rewrite or ends the session. `no_change` is a session outcome, not a disguised losing candidate.
+Every measured candidate ends in exactly one of `improved`, `neutral`, `regressed`, `equivalence_failed`, `performance_only`, `inconclusive`, or `cleanup_required`. A timeout is normally `inconclusive`; an unconfirmed index/view cleanup is `cleanup_required`. A slower or failed index rejects only that index candidate. It never erases the paired rewrite or ends the session. `no_change` is a session outcome, not a disguised losing candidate.
 
 ## Index and view sandbox gates
 
@@ -462,7 +476,7 @@ are recommendation-only.
 
 Return all of the following, even for static-only or failed work:
 
-1. **Outcome and stopping reason:** deployable winner, static candidate, no change, or inconclusive; never overstate confidence.
+1. **Outcome and stopping reason:** deployable winner, static candidate, performance-only outcome, no change, or inconclusive; never overstate confidence.
 2. **Semantic contract:** shape, exact supplied SQL types and value-domain
    endpoints, overflow/boundary preconditions, NULLs, duplicates,
    ordering/ties, isolation, parameters, and ambiguities.
