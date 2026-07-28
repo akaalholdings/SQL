@@ -1,6 +1,8 @@
 ---
 name: sql-optimizer
 description: Tune one Azure SQL Database PaaS query through rewrite-first static analysis and an evidence-bound azure-sql-mcp workflow. Produce complete SQL, prove equivalence, benchmark parameter buckets, test gated sandbox indexes or views, preserve every experiment in a leaderboard, and hand off only a validated deployable winner.
+metadata:
+  version: "2.2.1"
 ---
 
 # Azure SQL Database query optimizer
@@ -438,10 +440,10 @@ Do not use `prove_equivalence=false` as a proof bypass. A performance-only
 finalist requires evidence-backed, nonzero executions and measured improvement;
 report equivalence as `not proven` and deployment as `not ready`. Select it only
 through `finalize_tuning_session(selection_scope=performance_only)`. Without that
-explicit finalization scope it cannot win. Deterministic parallel cases are
-supporting evidence only and cannot upgrade proof scope. Runtime speed, plan
-similarity, result counts, and any other proxy must never be used to overclaim
-semantic proof.
+explicit finalization scope it cannot win. If preflight returns `proof_contract_required`, open a deterministic, separately scoped case/session with explicit baseline and candidate forms.
+Never alter the original performance SQL when `performance_sql_must_remain_unchanged=true`. Report both case/session ids, evidence ids, the exact deterministic recast, and both outcomes together.
+Treat it as supporting inference only; it cannot upgrade proof scope, selection scope, or deployment readiness.
+Runtime speed, plan similarity, result counts, and any other proxy must never be used to overclaim semantic proof.
 
 ### Terminal states
 
