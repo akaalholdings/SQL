@@ -9,6 +9,7 @@ TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
 def test_optimizer_is_one_self_contained_workflow() -> None:
     assert TEXT.startswith("---\nname: sql-optimizer\n")
+    assert 'metadata:\n  version: "2.2.1"' in TEXT
     assert "Required first response behavior" in TEXT
     assert "Missing plan lowers confidence" not in TEXT  # wording stays imperative, not a slogan
     assert "A missing plan lowers confidence" in TEXT
@@ -282,29 +283,36 @@ def test_optimizer_retries_evidence_once_and_recovers_persisted_case() -> None:
 
 
 def test_optimizer_gates_volatile_and_unordered_proof_claims() -> None:
+    normalized = " ".join(TEXT.split())
     for phrase in (
         "GETDATE",
         "current-time function",
         "`NEWID`",
         "nondeterministically seeded `RAND`",
         "non-repeatable `TABLESAMPLE`",
-        "literal\n`RAND` seed is allowed",
+        "literal `RAND` seed is allowed",
         "ordered `TOP`",
         "order-sensitive window expression",
         "verified unique total",
         "classification=proof_contract_required",
-        "before\nfinalists",
+        "before finalists",
         "`performance_only`",
-        "promising proof-required screening\ncandidate",
+        "promising proof-required screening candidate",
         "complete finalist performance workload",
         "Do not use `prove_equivalence=false` as a proof bypass",
         "evidence-backed, nonzero executions",
         "deployment as `not ready`",
-        "Deterministic parallel cases",
+        "separately scoped case/session",
+        "original performance SQL",
+        "`performance_sql_must_remain_unchanged=true`",
+        "both case/session ids",
+        "evidence ids",
+        "exact deterministic recast",
+        "supporting inference only",
         "cannot upgrade proof scope",
         "proxy must never be used to overclaim",
     ):
-        assert phrase in TEXT
+        assert phrase in normalized
 
 
 def test_optimizer_matches_mcp_objectives_and_database_aware_preflight() -> None:
