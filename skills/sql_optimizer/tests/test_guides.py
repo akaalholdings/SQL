@@ -331,6 +331,32 @@ def test_optimizer_distinguishes_combined_rewrite_from_rewrite_plus_index_lineag
         assert phrase in TEXT
 
 
+def test_optimizer_orders_lineage_work_before_terminal_session_retrieval() -> None:
+    strict_order = TEXT[
+        TEXT.index("The strict lineage order is:")
+        : TEXT.index("Preserve unproven parent lineage")
+    ]
+    steps = (
+        "benchmark_tuning_candidate(phase=screening)",
+        "benchmark_tuning_candidate(phase=finalist)",
+        "eligible `improved` or evidence-backed `performance_only` parent finalist",
+        "add the same-session `rewrite_plus_index` child",
+        "benchmark_index_candidate(phase=finalist)",
+        "only then finalize",
+    )
+    assert [strict_order.index(step) for step in steps] == sorted(
+        strict_order.index(step) for step in steps
+    )
+    for phrase in (
+        "Retain the complete benchmark request and exact idempotency key",
+        "`get_tuning_session` reconciles its evidence",
+        "Retrieve a lost response there rather than rerunning it with a new key",
+        "A `completed` or `cancelled` session is retrieval-only",
+        "do not submit new or replayed benchmark work",
+    ):
+        assert phrase in TEXT
+
+
 def test_optimizer_defaults_to_proven_selection_and_requires_explicit_opt_in() -> None:
     for phrase in (
         "`selection_scope=proven` by default",
