@@ -8,6 +8,12 @@ This folder contains the three maintained Copilot skills:
 
 Each installed bundle contains one authoritative file: `SKILL.md`. Database execution, durable cases, tuning sessions, index leases, and plan-action intents belong to `azure-sql-mcp`.
 
+The reviewed Git-only learning artifact is
+`skills/knowledge/azure-sql-mcp-learning-pack.json`. It uses the MCP pack
+format, contains active lessons only, and is validated during installation.
+It is deliberately not copied into a host skill directory: runtime recall
+comes only from the scoped local MCP learning store.
+
 ## Choose the skill
 
 | Need | Skill | MCP profile |

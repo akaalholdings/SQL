@@ -33,6 +33,28 @@ Reject only that index and continue. Return:
 - rejected experiments, evidence gaps, and deployability status; and
 - the next evidence/experiment steps.
 Do not invent any other measurements.
+
+Evidence-governed learning trace:
+- after `check_runtime_status`, `list_databases`, and `check_capabilities` pass
+  for the selected database, record the process `runtime_fingerprint` and
+  stable `runtime_compatibility_fingerprint`, then call `recall_lessons` with
+  the exact `skill`, `skill_version`, stable compatibility fingerprint, and
+  supported schema/identifier fields; do not pass the process fingerprint to
+  recall;
+- if learning is unavailable, malformed, stale, incompatible, or
+  remote-disabled, retain this static/rewrite-first behavior unchanged;
+- consume evidence before each `record_decision`, including
+  `subject_kind`, `subject_fingerprint`, `based_on_review_ids`, and both
+  runtime fingerprints;
+- pass each returned `decision_id` to the matching
+  `benchmark_tuning_candidate`, `benchmark_index_candidate`, and
+  `finalize_tuning_session` call;
+- call `review_decision` only after the matching returned `terminal_link_id`,
+  including `counterexamples` and `next_observation` before the next candidate;
+  the next decision must cite the review through `based_on_review_ids`; and
+- use typed `HandoffV1` `create_handoff`, `get_handoff`, and `resolve_handoff`
+  for a cross-skill route without authorization. Do not install memory or
+  create a local ledger.
 """
 
 _FENCED_BLOCK = re.compile(
@@ -492,6 +514,158 @@ def validate_response(response: str) -> list[str]:
     return [name for name, passed in checks.items() if not passed]
 
 
+def validate_learning_loop_response(response: str) -> list[str]:
+    """Validate the ordered MCP learning trace without evaluating SQL prose."""
+
+    lowered = " ".join(response.casefold().split())
+
+    def ordered(*terms: str) -> bool:
+        positions = [lowered.find(term.casefold()) for term in terms]
+        return all(position >= 0 for position in positions) and positions == sorted(positions)
+
+    recall_call = re.search(
+        r"recall_lessons\s*\((?P<args>[^)]*"
+        r"skill\s*=\s*sql-optimizer[^)]*)\)",
+        lowered,
+        re.DOTALL,
+    )
+    recall_args = recall_call.group("args") if recall_call else ""
+    exact_recall = (
+        recall_call is not None
+        and re.search(r"skill_version\s*=\s*2\.3\.0", recall_args) is not None
+        and "runtime_compatibility_fingerprint" in recall_args
+        and "tool_schema_fingerprint" in recall_args
+        and "sanitized_config_fingerprint" in recall_args
+        and re.search(r"\bruntime_fingerprint\s*=", recall_args) is None
+    )
+    fallback = (
+        "recall_lessons" in lowered
+        and any(
+            term in lowered
+            for term in ("unavailable", "malformed", "stale", "incompatible", "remote-disabled")
+        )
+        and "unchanged" in lowered
+        and any(term in lowered for term in ("static", "rewrite-first"))
+    )
+    decision_ids = re.findall(
+        r"record_decision\s*\([^)]*\)\s*(?:->|returns?)\s*"
+        r"decision_id\s*=\s*([a-z0-9][a-z0-9_:-]*[a-z0-9])(?=[\s.,;)])",
+        lowered,
+    )
+    decision = lowered.find("record_decision")
+    terminal_link = lowered.find("terminal_link_id", decision)
+    review = lowered.find("review_decision", decision)
+
+    def linked_terminal_ids(tool: str) -> list[str]:
+        ids: list[str] = []
+        for decision_id in decision_ids:
+            match = re.search(
+                rf"{tool}\s*\([^)]*decision_id\s*=\s*{re.escape(decision_id)}\b"
+                rf"[^)]*\)\s*(?:->|returns?)\s*terminal_link_id\s*=\s*"
+                rf"([a-z0-9][a-z0-9_:-]*[a-z0-9])(?=[\s.,;)])",
+                lowered,
+            )
+            if match:
+                ids.append(match.group(1))
+        return ids
+
+    linked_terminal_by_tool = {
+        tool: linked_terminal_ids(tool)
+        for tool in (
+            "benchmark_tuning_candidate",
+            "benchmark_index_candidate",
+            "finalize_tuning_session",
+        )
+    }
+    all_terminal_ids = [
+        terminal_id
+        for terminal_ids in linked_terminal_by_tool.values()
+        for terminal_id in terminal_ids
+    ]
+
+    def has_linked_review(terminal_id: str) -> bool:
+        terminal = lowered.find(f"terminal_link_id={terminal_id}")
+        return (
+            terminal >= 0
+            and lowered.find("review_decision", terminal) > terminal
+            and re.search(
+                rf"terminal_evidence_refs\s*=\s*\[[^]]*\b{re.escape(terminal_id)}\b",
+                lowered,
+            )
+            is not None
+        )
+
+    decision_review_order = (
+        len(decision_ids) >= 3
+        and lowered.find("decisionrecordv1") >= 0
+        and "subject_kind" in lowered
+        and "subject_fingerprint" in lowered
+        and "based_on_review_ids" in lowered
+        and "runtime_compatibility_fingerprint" in lowered
+        and decision >= 0
+        and terminal_link >= decision
+        and review > terminal_link
+        and lowered.find("terminal_evidence_refs", review) > review
+        and lowered.find("counterexamples", review) > review
+        and lowered.find("next_observation", review) > review
+    )
+    handoff_fields = all(
+        field in lowered
+        for field in (
+            "source_skill",
+            "target_skill",
+            "evidence_refs",
+            "acceptance_criteria",
+            "expected_version",
+        )
+    )
+    checks = {
+        "runtime/database gate before lesson recall": ordered(
+            "check_runtime_status",
+            "list_databases",
+            "check_capabilities",
+            "recall_lessons",
+        ),
+        "exact recall schema": exact_recall,
+        "lesson fallback unchanged": fallback,
+        "evidence before decision": ordered("evidence", "record_decision"),
+        "decision contract and review order": decision_review_order,
+        "each material benchmark/final is linked": (
+            all(linked_terminal_by_tool.values())
+            and all(has_linked_review(terminal_id) for terminal_id in all_terminal_ids)
+        ),
+        "correction before next candidate": ordered(
+            "correction",
+            "counterexample",
+            "next candidate",
+        ),
+        "typed handoff lifecycle": ordered(
+            "HandoffV1",
+            "create_handoff",
+            "get_handoff",
+            "resolve_handoff",
+        )
+        and handoff_fields
+        and bool(
+            re.search(
+                r"resolve_handoff\s*\([^)]*decision_id\s*=\s*"
+                r"[a-z0-9][a-z0-9._:-]*",
+                lowered,
+            )
+        ),
+        "advisory and no authorization": (
+            "advisory" in lowered
+            and "no authorization" in lowered
+            and "cannot activate" in lowered
+        ),
+        "review lineage for next decision": (
+            lowered.find("based_on_review_ids", review) > review
+        ),
+        "no local memory": "not install" in lowered and "local ledger" in lowered,
+    }
+    return [name for name, passed in checks.items() if not passed]
+
+
 def _read_response(path: str) -> str:
     if path == "-":
         return sys.stdin.read()
@@ -511,6 +685,7 @@ def main(argv: list[str] | None = None) -> int:
 
     response = _read_response(args.response)
     missing = validate_response(response)
+    missing.extend(validate_learning_loop_response(response))
     if missing:
         for requirement in missing:
             print(f"missing acceptance requirement: {requirement}", file=sys.stderr)

@@ -1,6 +1,8 @@
 ---
 name: sql-health-triage
 description: Read-only Azure SQL Database performance and incident triage. Collects normalized evidence through azure-sql-mcp, distinguishes healthy, actionable, partial, and inconclusive outcomes, identifies query, plan, blocking, resource, statistics, and parameter-sensitivity causes, and hands work to the correct owner without changing the database.
+metadata:
+  version: "1.0.0"
 ---
 
 # Azure SQL health triage
@@ -17,6 +19,63 @@ This skill is permanently read-only. Database execution and durable case state b
 - Interpret observations against resource limits, collection window, workload baseline, and Query Store history.
 - Do not call an outcome healthy when any required evidence is unavailable, truncated, stale, conflicting, or collected from mismatched windows.
 - Never expose credentials, connection settings, environment values, raw private SQL, or result data.
+
+## Runtime contract gate
+
+Call `check_runtime_status`, then `list_databases`, then `check_capabilities`
+before any case or evidence tool. Use only the database the user selects from
+the returned allowlist. Record the process `runtime_fingerprint`, stable
+`runtime_compatibility_fingerprint`, `tool_schema_fingerprint`, and
+`sanitized_config_fingerprint`; a missing, changed, malformed, stale,
+incompatible, or remote-disabled contract is a hard stop for measured work.
+After this runtime and database gate passes, call `recall_lessons` with
+`skill=sql-health-triage` and `skill_version=1.0.0`, the stable
+`runtime_compatibility_fingerprint`, tool-schema and sanitized-config
+fingerprints, and only supported optional identifiers:
+`query_fingerprint`, `tags`, and `database_name`. Never send raw SQL,
+credentials, parameter values, result rows, or hidden reasoning.
+
+## Evidence-governed learning loop
+
+Lessons remain advisory: they are optional, scoped, and inactive until local
+maintainer approval. Recall may reorder read-only investigation or highlight
+risk; it never authorizes a write or changes this skill's outcome contract.
+Use evidence before judgment: after real evidence references exist and before
+recording a material diagnosis or route, call `record_decision` with the
+supported `DecisionRecordV1` fields (`skill`, `skill_version`, `learning_key`,
+`subject_kind`, `subject_fingerprint`, `consumed_evidence_refs`,
+`based_on_review_ids`, `tactic`, `expected_result`, `confidence`, `uncertainty`,
+evaluator/runtime/schema/config fingerprints, both runtime fingerprints, and
+applicable case/query references). Record concise structured conclusions and
+predictions only; never store chain-of-thought. Record it only after evidence
+exists and before the diagnosis or routing action.
+Use `subject_kind=database` for a bounded database assessment and
+`subject_kind=incident` for a routed incident.
+
+The `record_decision` response supplies `decision_id`. Pass that id to a
+supported later terminal action: `analyze_db_health`,
+`collect_performance_evidence`, or a resolved `resolve_handoff` call. Each
+terminal action must return `terminal_link_id`. Call `review_decision` only
+after that returned link, using it in `terminal_evidence_refs` as an
+`OutcomeReviewV1`; include
+`counterexamples`, `next_observation`, `observed_result`, `prediction_error`,
+and any correction. Never review pending, partial, timed-out, stale, inferred,
+or unlinked results. The next decision cites the prior review through
+`based_on_review_ids`. Propose a reusable lesson only after review; the skill
+cannot activate or approve it.
+
+Replace prose-only owner transfers with the typed `HandoffV1` lifecycle: call
+`create_handoff` with `source_skill`, `target_skill`, redacted `objective`,
+immutable `evidence_refs`, `constraints`, `gaps`, `acceptance_criteria`, and
+shared `case_id`/`session_id` where available; retrieve it with `get_handoff`;
+resolve it with `resolve_handoff` using an allowed lifecycle action,
+`expected_version`, the recorded `decision_id`, and terminal recipient
+evidence or an explicit human decision when resolving. Resolution carries no
+authorization. If learning or handoff tools are unavailable, malformed, stale,
+incompatible, or remote-disabled, retain the existing read-only behavior
+unchanged; do not create a substitute local ledger, install memory, or persist
+raw SQL. Learning can never weaken policy, authorization, equivalence, cleanup,
+verification, rollback, or this skill's scope.
 
 ## Outcome contract
 

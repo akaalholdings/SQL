@@ -1,0 +1,11 @@
+{
+  "content_hash": "sha256:190b6372ef88a06cbab8c5708ee5c21bf710de5138cfd071e74a7d05abb0973f",
+  "lessons": [],
+  "pack_type": "azure-sql-mcp-learning-pack",
+  "provenance": {
+    "contract_version": 1,
+    "producer": "azure-sql-mcp-learning",
+    "source": "local-owner-only-learning-store"
+  },
+  "schema_version": 1
+}

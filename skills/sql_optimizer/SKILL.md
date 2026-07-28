@@ -2,7 +2,7 @@
 name: sql-optimizer
 description: Tune one Azure SQL Database PaaS query through rewrite-first static analysis and an evidence-bound azure-sql-mcp workflow. Produce complete SQL, prove equivalence, benchmark parameter buckets, test gated sandbox indexes or views, preserve every experiment in a leaderboard, and hand off only a validated deployable winner.
 metadata:
-  version: "2.2.1"
+  version: "2.3.0"
 ---
 
 # Azure SQL Database query optimizer
@@ -27,10 +27,10 @@ Initialize the MCP contract by calling `check_runtime_status`, then
 `list_databases`, then `check_capabilities`. Read the returned
 `tool_groups` before selecting tools; do not infer exposed groups
 from the profile name. Complete this sequence before `explain_query` or any
-case/session tool. Record the returned `runtime_fingerprint`,
-`tool_schema_fingerprint`, `sanitized_config_fingerprint`, active profile, and
-tool groups.
-Require the returned `runtime_fingerprint`, `tool_schema_fingerprint`, and
+case/session tool. Record the returned process `runtime_fingerprint`, stable
+`runtime_compatibility_fingerprint`, `tool_schema_fingerprint`,
+`sanitized_config_fingerprint`, active profile, and tool groups.
+Require both returned runtime fingerprints, `tool_schema_fingerprint`, and
 `sanitized_config_fingerprint` to be present and stable for the same MCP process.
 A missing, changed, or mismatched runtime/tool schema is a hard stop for measured
 work: remain static or report `inconclusive`; do not guess the schema or fall back
@@ -41,6 +41,54 @@ After any configuration, environment, tool-group, or profile change, perform a
 full host restart before using the MCP again. Do not rely on hot reload or a
 partial child-process restart. Never widen the returned local policy to satisfy
 a requested budget; report the policy cap and stop or continue within it.
+
+## Evidence-governed learning loop
+
+The learning plane is advisory only: it may reorder exploration or highlight a
+risk, but it never authorizes execution, changes equivalence, or overrides
+policy, cleanup, verification, rollback, or the candidate state machine. Do not
+recall until the runtime and database gates above have passed. Then call
+`recall_lessons` with `skill=sql-optimizer` and `skill_version=2.3.0`, the stable
+`runtime_compatibility_fingerprint`,
+`tool_schema_fingerprint`, and `sanitized_config_fingerprint`, plus only
+supported optional `query_fingerprint`, `tags`, and `database_name`. Never send
+raw SQL, credentials, parameter values, result rows, or hidden reasoning. A
+missing, malformed, stale, incompatible, or remote-disabled recall falls back
+to this skill's existing static/rewrite-first workflow unchanged.
+
+Use evidence before judgment. Once real evidence references have been consumed
+and before a material measured candidate decision, call `record_decision` with
+the supported `DecisionRecordV1` fields: `skill`, `skill_version`,
+`learning_key`, `subject_kind`, `subject_fingerprint`,
+`consumed_evidence_refs`, `based_on_review_ids`, `tactic`, `expected_result`,
+`confidence`, `uncertainty`, evaluator/runtime/schema/config fingerprints, both
+runtime fingerprints, and the applicable case/session/candidate/query
+references. Record structured predictions and conclusions, never
+chain-of-thought. Use `subject_kind=query` for rewrite, index, and final
+selection decisions. Record one decision before each material benchmark and before
+final selection; the response supplies its `decision_id`.
+
+Pass each decision id to the corresponding supported terminal action:
+`benchmark_tuning_candidate`, `benchmark_index_candidate`, or
+`finalize_tuning_session`. Each returns `terminal_link_id`. Only then call
+`review_decision` as `OutcomeReviewV1` with that returned id in
+`terminal_evidence_refs`, plus `observed_result`, `prediction_error`,
+`counterexamples`, `next_observation`, and any correction. Never review pending, partial, stale, inferred, or unlinked
+results. Review a timeout only when MCP returned it as a durable terminal classification with a
+`terminal_link_id`; otherwise it remains unreviewable. A losing prediction must record its
+correction and counterexample before generating the next candidate; that next decision cites the
+prior review through `based_on_review_ids`. Propose a lesson only after review; the skill cannot
+activate or approve it.
+
+Use the typed `HandoffV1` lifecycle for cross-skill work: `create_handoff` takes
+`source_skill`, `target_skill`, redacted `objective`, immutable `evidence_refs`,
+`constraints`, `gaps`, `acceptance_criteria`, and shared `case_id`/`session_id`;
+`get_handoff` retrieves it; `resolve_handoff` requires an allowed action,
+`expected_version`, the recorded `decision_id`, and terminal recipient evidence
+or an explicit human decision when resolving. Handoffs never grant
+authorization. If any learning or handoff tool is unavailable, malformed,
+stale, incompatible, or remote-disabled, retain existing static behavior, do
+not create a substitute local ledger, install memory, or persist raw SQL.
 
 ## Required first response behavior: rewrite-first response contract
 

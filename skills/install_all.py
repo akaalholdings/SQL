@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
+import json
 import os
 import pathlib
 import runpy
@@ -16,6 +18,7 @@ from collections.abc import Sequence
 
 ROOT = pathlib.Path(__file__).resolve().parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+LEARNING_PACK = pathlib.Path("knowledge") / "azure-sql-mcp-learning-pack.json"
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 HOST_SKILL_DIRS = (
     pathlib.Path(".copilot/skills"),
@@ -80,6 +83,48 @@ def _validate_sources() -> None:
         if tuple(namespace.get("SKILL_DIRS", ())) != ():
             raise RuntimeError(f"{bundle} installer must not publish directories.")
 
+    pack = ROOT / LEARNING_PACK
+    if pack.is_symlink() or not pack.is_file():
+        raise RuntimeError(f"Missing or unsafe Git-only learning pack: {pack}")
+    try:
+        payload = json.loads(pack.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Learning pack is not valid JSON: {pack}") from exc
+    if not isinstance(payload, dict) or set(payload) != {
+        "content_hash",
+        "lessons",
+        "pack_type",
+        "provenance",
+        "schema_version",
+    }:
+        raise RuntimeError("Learning pack has an unsupported shape.")
+    if payload.get("pack_type") != "azure-sql-mcp-learning-pack":
+        raise RuntimeError("Learning pack has an unsupported pack type.")
+    if payload.get("schema_version") != 1 or not isinstance(payload.get("lessons"), list):
+        raise RuntimeError("Learning pack has an unsupported schema version.")
+    if payload.get("provenance") != {
+        "contract_version": 1,
+        "producer": "azure-sql-mcp-learning",
+        "source": "local-owner-only-learning-store",
+    }:
+        raise RuntimeError("Learning pack provenance is invalid.")
+    lesson_ids: list[str] = []
+    for lesson in payload["lessons"]:
+        if not isinstance(lesson, dict) or lesson.get("status") != "active":
+            raise RuntimeError("Learning pack may contain active lessons only.")
+        lesson_id = lesson.get("lesson_id")
+        if not isinstance(lesson_id, str) or not lesson_id:
+            raise RuntimeError("Learning pack lesson_id is invalid.")
+        lesson_ids.append(lesson_id)
+    if lesson_ids != sorted(lesson_ids) or len(set(lesson_ids)) != len(lesson_ids):
+        raise RuntimeError("Learning pack lessons must have unique sorted identifiers.")
+    content = dict(payload)
+    content_hash = content.pop("content_hash")
+    canonical = json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    expected_hash = "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    if content_hash != expected_hash:
+        raise RuntimeError("Learning pack content hash does not validate.")
+
 
 def find_retired_skill_paths(skills_root: pathlib.Path) -> tuple[pathlib.Path, ...]:
     """Return obsolete skill directories without following directory symlinks."""
@@ -135,6 +180,8 @@ def install_all(
         staged = stage_root / bundle
         staged.mkdir(mode=0o700)
         shutil.copy2(ROOT / bundle / "SKILL.md", staged / "SKILL.md")
+    # The learning pack is a reviewed Git artifact for MCP import/review only.
+    # It is deliberately not staged or copied into any host skill directory.
 
     installed: set[str] = set()
     old_moved: set[str] = set()

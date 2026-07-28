@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 ROOT = pathlib.Path(__file__).resolve().parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+LEARNING_PACK = pathlib.Path("knowledge") / "azure-sql-mcp-learning-pack.json"
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 HOST_SKILL_DIRS = (
     pathlib.Path(".copilot/skills"),
@@ -90,6 +91,12 @@ def compare_install(
             problems.append(f"{bundle}: SKILL.md is a symbolic link")
         elif not filecmp.cmp(source, installed_skill, shallow=False):
             problems.append(f"{bundle}: SKILL.md differs from source")
+
+    installed_pack = skills_root / LEARNING_PACK
+    if installed_pack.exists() or installed_pack.is_symlink():
+        problems.append(
+            "learning pack must remain a reviewed Git artifact; it must not be installed"
+        )
 
     roots = discovery_roots or discoverable_skill_roots(skills_root)
     for discovery_root in roots:
