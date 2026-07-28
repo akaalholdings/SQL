@@ -44,10 +44,10 @@ def test_optimizer_encodes_budget_terminal_states_and_parameter_buckets() -> Non
         "up to 4 parameter cases",
         "80 total measured query executions",
         "20 minutes wall-clock",
-        "conservative default, not a product ceiling",
-        "including several hours",
+        "Treat them as defaults only",
+        "never widen local policy",
         "fastest proven-equivalent candidate",
-        "largest useful policy-authorized budget",
+        "largest useful budget within the returned policy",
         "common, rare, NULL when valid, and a boundary value",
     ):
         assert phrase in TEXT
@@ -235,3 +235,83 @@ def test_optimizer_distinguishes_rewrite_equivalence_from_index_stability() -> N
         "candidate plan used the expected index",
     ):
         assert phrase in TEXT
+
+
+def test_optimizer_requires_runtime_and_schema_fingerprints_before_database_tools() -> None:
+    runtime_call = (
+        "calling `check_runtime_status`, then\n"
+        "`list_databases`, then `check_capabilities`"
+    )
+    assert runtime_call in TEXT
+    for phrase in (
+        "Initialize the MCP contract",
+        "Complete this sequence before\n`explain_query` or any case/session tool",
+        "runtime_fingerprint",
+        "tool_schema_fingerprint",
+        "sanitized_config_fingerprint",
+        "stable for the same MCP process",
+        "full host restart",
+        "Never widen the returned local policy",
+    ):
+        assert phrase in TEXT
+
+
+def test_optimizer_requires_provenance_for_actual_query_plans() -> None:
+    for phrase in (
+        "analyze=true",
+        "query_executed=true",
+        "`summary.actual_metrics`",
+        "`metric_provenance`",
+        "plan_kind=actual",
+        "`analyze=true` alone is insufficient",
+    ):
+        assert phrase in TEXT
+
+
+def test_optimizer_retries_evidence_once_and_recovers_persisted_case() -> None:
+    for phrase in (
+        "retry `collect_performance_evidence` exactly once",
+        "same request and same idempotency key",
+        "retrieve persisted case evidence",
+        "core benchmark/comparison path works",
+        "explicit gap",
+    ):
+        assert phrase in TEXT
+
+
+def test_optimizer_gates_volatile_and_unordered_proof_claims() -> None:
+    for phrase in (
+        "GETDATE",
+        "current-time function",
+        "`NEWID`",
+        "nondeterministically seeded `RAND`",
+        "non-repeatable `TABLESAMPLE`",
+        "deterministic `RAND` seed is allowed",
+        "ordered `TOP`",
+        "order-sensitive window expression",
+        "verified unique total",
+        "classification=proof_contract_required",
+        "before\nfinalists",
+        "`performance_only`",
+        "proxy must never be used to overclaim",
+        "no deterministic proof input",
+    ):
+        assert phrase in TEXT
+
+
+def test_optimizer_requires_parent_lineage_for_combined_rewrite_and_index() -> None:
+    for phrase in (
+        "child `combined` candidate",
+        "artifact_ref` exactly `candidate:<proven-parent-id>",
+        "proven `improved` finalist state",
+        "same session",
+        "No unproven, neutral, regressed, performance-only, or cross-session parent",
+        "runs only through `benchmark_index_candidate` with `phase=finalist`",
+    ):
+        assert phrase in TEXT
+
+
+def test_optimizer_keeps_views_recommendation_only_and_does_not_claim_warmup() -> None:
+    assert "recommendation-only" in TEXT
+    assert "canonical view benchmark" in TEXT
+    assert "warmup" not in TEXT.casefold()

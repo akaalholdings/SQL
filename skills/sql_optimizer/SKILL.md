@@ -19,6 +19,25 @@ Start from the query text. Produce safe concrete rewrite candidates before plan 
 - Prefer a rewrite over DDL when comparable. Treat every index or view change as an experiment; one query cannot prove a production-wide index drop or write-cost tradeoff.
 - Do not force plans or set Query Store hints. Hand plan-control needs to `sql-plan-enforcer` with the shared case/session identifier.
 
+## Runtime contract gate
+
+Initialize the MCP contract by calling `check_runtime_status`, then
+`list_databases`, then `check_capabilities`. Complete this sequence before
+`explain_query` or any case/session tool. Record the returned `runtime_fingerprint`,
+`tool_schema_fingerprint`, `sanitized_config_fingerprint`, active profile, and
+tool groups.
+Require the returned `runtime_fingerprint`, `tool_schema_fingerprint`, and
+`sanitized_config_fingerprint` to be present and stable for the same MCP process.
+A missing, changed, or mismatched runtime/tool schema is a hard stop for measured
+work: remain static or report `inconclusive`; do not guess the schema or fall back
+to a different host/profile. Re-check the fingerprints before a campaign and
+when resuming persisted state.
+
+After any configuration, environment, tool-group, or profile change, perform a
+full host restart before using the MCP again. Do not rely on hot reload or a
+partial child-process restart. Never widen the returned local policy to satisfy
+a requested budget; report the policy cap and stop or continue within it.
+
 ## Required first response behavior: rewrite-first response contract
 
 When SQL is supplied:
@@ -304,6 +323,14 @@ Computed-column and indexed-view options require deterministic expressions, supp
 - **Counterexample/risk:** operator counters cannot be summed into fake query totals; a missing actual plan is not proof of no issue; a forced plan belongs to the enforcement workflow.
 - **MCP evidence:** `explain_query`, `compare_plan_summaries`, actual plan artifact/provenance, Query Store plan identity, wait/resource envelopes, and query-level metrics.
 
+Treat `explain_query` as an actual query plan only when the request used
+`analyze=true`, the response says `query_executed=true`, and non-empty
+`summary.actual_metrics` are accompanied by non-empty `metric_provenance` or
+equivalent provenance. Require `plan_kind=actual` for that claim.
+`analyze=true` alone is insufficient. Otherwise label the result estimated or
+metadata-only and do not report actual rows, elapsed time, reads, or other
+execution metrics.
+
 Read plans from the first material divergence, not from the visually most expensive icon:
 
 - compare estimated rows, actual rows, actual rows read, executions, and output rows at the same operator;
@@ -335,11 +362,11 @@ Interpret the query inside its Azure SQL Database limits:
 
 ### Family 6: combined winners
 
-- **Trigger:** two individually understood candidates address complementary bottlenecks and both pass screening.
-- **Safe rewrite/action:** combine the smallest compatible winners, register the combined SQL as a new `combined` candidate, and rerun equivalence and performance tests.
-- **Preconditions:** each component has a stable fingerprint, terminal state, rollback, and known semantic proof; the interaction is hypothesized, not assumed additive.
+- **Trigger:** a rewrite has a proven `improved` finalist state and a complementary index hypothesis remains worth testing.
+- **Safe rewrite/action:** register the rewrite-plus-index as a child `combined` candidate with `artifact_ref` exactly `candidate:<proven-parent-id>`, then measure the index's marginal A-B-A effect against that proven rewrite parent.
+- **Preconditions:** the referenced parent is in the same session, is an improved finalist with complete supported equivalence, and has stable SQL/database/runtime fingerprints. No unproven, neutral, regressed, performance-only, or cross-session parent may create the child.
 - **Counterexample/risk:** a good rewrite plus a good index can duplicate work, change join order, or regress another bucket; never add metrics from separate runs.
-- **MCP evidence:** complete `get_tuning_session` leaderboard, combined candidate evidence id, per-bucket plan/metric deltas, equivalence, and sandbox cleanup state.
+- **MCP evidence:** complete `get_tuning_session` lineage, the child `artifact_ref`, parent and child evidence ids, per-bucket A-B-A deltas, equivalence, and sandbox cleanup state.
 
 ### Views and deployment handoff
 
@@ -354,11 +381,11 @@ Interpret the query inside its Azure SQL Database limits:
 Use the explicit case/session tools so the leaderboard is complete. Compatibility tools `tune_query` and `benchmark_query_rewrite` may be used only when the server exposes no explicit equivalent and must still return the same states and evidence.
 
 1. **Static pass:** freeze the contract, inspect every pattern card, and return complete unmeasured SQL before calling MCP.
-2. **Select database and verify the MCP contract:** under the `optimizer` profile call `list_databases` and `check_capabilities`; use only the user-selected database in the allowlist. Require `mcp_contract.performance_tuning=1` before opening a measured case. Read `local_tuning_policy` for the actual candidate, execution, time, and per-request ceilings. If the contract is absent or incompatible, remain in static mode, return concrete unmeasured rewrites, and identify the MCP upgrade gap. Unknown or unselected databases fail closed.
+2. **Select database and verify the MCP contract:** follow the runtime contract gate, then use only the user-selected database in the `list_databases` allowlist. Require `mcp_contract.performance_tuning=1` before opening a measured case. Read `local_tuning_policy` for the actual candidate, execution, time, and per-request ceilings. If the contract is absent or incompatible, remain in static mode, return concrete unmeasured rewrites, and identify the MCP upgrade gap. Unknown or unselected databases fail closed.
 3. **Open case:** call `start_performance_case` with the unchanged baseline SQL, objective, and at most four named parameter cases. Each case must contain one exact value and declared SQL type for every detected parameter. The same SQL and database must identify the case.
-4. **Collect evidence:** call `collect_performance_evidence` with the case id and the same baseline SQL, normally `execute_query=false`. For an active parameterized sample, set `execute_query=true` only with one exact typed `parameter_case`; otherwise fail closed. Read `get_performance_case`; capture availability, collection window, truncation, units, provenance, stable query identity, resource pressure, statistics, waits, and parameter sensitivity.
-5. **Start session:** call `start_tuning_session` once. Pass the time, candidate, and execution budget the user requested. If the user asks for the fastest version, permits hours, and gives no exact limit, use the largest useful campaign allowed by `local_tuning_policy`; do not fall back to 20 minutes. Do not create replacement sessions to evade a budget.
-6. **Register and screen:** for each single material change call `add_tuning_candidate` with complete candidate SQL and exactly one strategy: `predicate`, `join`, `aggregation`, `cardinality`, `index`, or `combined`. For `predicate`, `join`, `aggregation`, `cardinality`, and `combined`, call `benchmark_tuning_candidate` with `phase=screening`, the same baseline, candidate, buckets, and `compare_order` matching the contract. For `index`, retain the unchanged query SQL, switch to the gated sandbox workflow, and call only `benchmark_index_candidate`; it owns DDL, A-B-A measurements, the lease, and cleanup.
+4. **Collect evidence:** call `collect_performance_evidence` with the case id, the same baseline SQL, and a caller-generated idempotency key, normally `execute_query=false`. For an active parameterized sample, set `execute_query=true` only with one exact typed `parameter_case`; otherwise fail closed. On a retryable collection failure, retry `collect_performance_evidence` exactly once with the same request and same idempotency key. Then call `get_performance_case` to retrieve persisted case evidence even when collection reported an error. Continue only when the core benchmark/comparison path works and every missing collector is recorded as an explicit gap; otherwise remain `inconclusive`. Capture availability, collection window, truncation, units, provenance, stable query identity, resource pressure, statistics, waits, and parameter sensitivity.
+5. **Start session:** call `start_tuning_session` once. Pass the requested time, candidate, and execution budget only when each is within `local_tuning_policy`; otherwise use or report the exact policy cap. Do not create replacement sessions to evade a budget.
+6. **Register and screen:** for each single material change call `add_tuning_candidate` with complete candidate SQL and exactly one strategy: `predicate`, `join`, `aggregation`, `cardinality`, `index`, or `combined`. For `predicate`, `join`, `aggregation`, and `cardinality`, call `benchmark_tuning_candidate` with `phase=screening`, the same baseline, candidate, buckets, and `compare_order` matching the contract. For `index`, retain the unchanged query SQL, switch to the gated sandbox workflow, and call only `benchmark_index_candidate`; it owns DDL, A-B-A measurements, the lease, and cleanup. A rewrite-plus-index `combined` child is registered only after its rewrite parent is an improved, proven finalist, must pass `artifact_ref=candidate:<proven-parent-id>`, must use the exact parent rewrite SQL, and runs only through `benchmark_index_candidate` with `phase=finalist`.
 7. **Reconcile:** after each result call `get_tuning_session`; preserve every candidate, returned evidence id, terminal state, metric provenance, plan delta, equivalence result, execution count, and continuation flag.
 8. **Finalize:** re-run only credible improved candidates as `phase=finalist`; call `compare_plan_summaries` for plan detail as needed. Call `finalize_tuning_session` with the selected finalist id or `selected_candidate_id=null` and an exact stopping reason. Finalization must return the complete leaderboard; unresolved candidates become `inconclusive`.
 
@@ -366,9 +393,9 @@ Use the explicit case/session tools so the leaderboard is complete. Compatibilit
 
 - `optimizer`: restricted/local read-only posture, `AZURE_SQL_PROFILE=optimizer`, write disabled, benchmark permission required by local database policy. It is for rewrites, evidence, equivalence, and plan comparison.
 - `sandbox`: local stdio, unrestricted/apply posture, `AZURE_SQL_TOOL_GROUPS=core,performance,admin`, non-production allowlisted database, and policy permission. It is required for leased temporary indexes and gated view apply/verify/rollback.
-- The compatibility default is 10 candidate experiments, 3 interleaved screening runs, 5 interleaved finalist runs, up to 4 parameter cases, 80 total measured query executions, and 20 minutes wall-clock. This is a conservative default, not a product ceiling.
-- `start_tuning_session` accepts explicit `max_candidates`, `execution_limit`, and `time_limit_minutes`. For a user-authorized deep search, use the requested duration, including several hours, and enough candidates/executions to test every credible family and combination. The local database policy sets the real maximum; if it blocks the requested campaign, report the exact cap instead of silently falling back to 20 minutes.
-- `check_capabilities.local_tuning_policy` is authoritative for those ceilings. When the request is simply “find the fastest version” and long execution is acceptable, choose the largest useful policy-authorized budget and keep testing credible combinations rather than stopping after the first improvement.
+- The server defaults are 10 candidate experiments, 3 interleaved screening runs, 5 interleaved finalist runs, up to 4 parameter cases, 80 total measured query executions, and 20 minutes wall-clock. Treat them as defaults only; `check_capabilities.local_tuning_policy` is authoritative.
+- `start_tuning_session` accepts `max_candidates`, `execution_limit`, and `time_limit_minutes`, but never widen local policy. Clamp or reject a request that exceeds the returned candidate, execution, time, or per-request ceilings, and report the exact cap. Do not create replacement sessions to evade a budget.
+- When the request is simply “find the fastest version”, use the largest useful budget within the returned policy and continue until that budget, evidence, or a written diminishing-return reason ends the search.
 - Continue until the approved budget is exhausted, all credible single-change and combined candidates have terminal evidence, or further search has a written evidence-based diminishing-return reason. “Fastest” means the fastest proven-equivalent candidate across the tested parameter buckets and workload objective; never claim a global optimum over untested SQL.
 - Rewrite screening defaults to three baseline/candidate pairs and defers full equivalence: 6 executions per bucket, 24 for four buckets. A finalist uses five pairs plus one two-query snapshot comparison: 12 per bucket, 48 for four. Screening one bucket then validating four costs 54; screening all four then validating four costs 72. Use the smallest representative screening subset that can reject a loser and preserve budget for finalists.
 - An index A-B-A screen runs baseline, temporary-index, and post-cleanup baseline three times: 9 executions per bucket. A five-run finalist costs 15 per bucket, 60 for four. The configured session execution cap still applies.
@@ -385,6 +412,22 @@ For rewrites, `benchmark_tuning_candidate` finalists and `compare_query_results`
 An index benchmark runs unchanged SQL across A-B-A phases separated by DDL, so it cannot claim a same-snapshot rewrite proof. It requires complete non-truncated result fingerprints to remain stable before, during, and after the index, plus proof that the candidate plan used the expected index. Data movement between phases makes the index result inconclusive.
 
 A bounded sample, row-limit truncation, different snapshots for a rewrite, unsupported type metadata, duplicate column ambiguity, timeout, or unavailable bucket is inconclusive, never proven equivalent. Any rewrite mismatch is `equivalence_failed` and cannot win.
+
+Run the server's semantic preflight before finalist comparisons. Queries using
+`GETDATE` or another current-time function, `NEWID`, unseeded or
+nondeterministically seeded `RAND`, non-repeatable `TABLESAMPLE`, or a row limit
+(`TOP`, `OFFSET/FETCH`) whose `ORDER BY` is absent or not backed by a verified
+unique total order must be reported as
+`classification=proof_contract_required` before
+finalists. The same gate applies to an order-sensitive window expression whose
+`ORDER BY` lacks a verified unique total order. An ordered `TOP` remains
+proof-required until its `ORDER BY` is backed by that proof. A literal or otherwise
+deterministic `RAND` seed is allowed. Unsafe queries may continue as
+`performance_only` when the core benchmark is usable; report only the returned
+performance measurements. That classification cannot prove semantic equivalence
+or deployability. Runtime speed, plan similarity, result counts, and any other
+proxy must never be used to overclaim semantic proof. The current MCP contract has
+no deterministic proof input; the candidate remains performance-only.
 
 ### Terminal states
 
@@ -412,7 +455,8 @@ all further sandbox mutations, and retain the durable change id and exact
 recovery action. Report the proposed view separately with performance and
 equivalence as `not collected`. It can enter winner selection only when MCP
 exposes a canonical view benchmark that records baseline, changed-view, and
-post-rollback query evidence in the shared session.
+post-rollback query evidence in the shared session. Until then, view changes
+are recommendation-only.
 
 ## Leaderboard, winner, and no-change report
 
