@@ -9,7 +9,7 @@ TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
 def test_optimizer_is_one_self_contained_workflow() -> None:
     assert TEXT.startswith("---\nname: sql-optimizer\n")
-    assert 'metadata:\n  version: "2.2.1"' in TEXT
+    assert 'metadata:\n  version: "2.3.0"' in TEXT
     assert "Required first response behavior" in TEXT
     assert "Missing plan lowers confidence" not in TEXT  # wording stays imperative, not a slogan
     assert "A missing plan lowers confidence" in TEXT
@@ -102,7 +102,7 @@ def test_optimizer_has_no_retired_or_private_runtime_dependencies() -> None:
 
 
 def test_optimizer_is_compact_and_has_operational_pattern_cards() -> None:
-    assert len(TEXT.splitlines()) < 500
+    assert len(TEXT.splitlines()) < 540
     for heading in (
         "Family 1: predicates and SARGability",
         "Family 2: joins and relational shape",

@@ -9,6 +9,7 @@ TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
 def test_enforcer_is_self_contained_and_mcp_owned() -> None:
     assert TEXT.startswith("---\nname: sql-plan-enforcer\n")
+    assert 'metadata:\n  version: "1.0.0"' in TEXT
     assert "MCP prepared-intent lifecycle" in TEXT
     assert "MCP owns all durable intent state" in TEXT
     assert not re.search(r"https?://|[A-Za-z]+Guide\.md", TEXT)

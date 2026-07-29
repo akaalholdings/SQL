@@ -9,6 +9,7 @@ import pytest
 SKILLS_ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPO_ROOT = SKILLS_ROOT.parent
 ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+LEARNING_PACK = pathlib.Path("knowledge") / "azure-sql-mcp-learning-pack.json"
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 RETIRED_COMPONENT = "".join(("con", "nector"))  # noqa: FLY002
 
@@ -38,6 +39,8 @@ def _install(tmp_path: pathlib.Path, destination: pathlib.Path):
 def test_release_tools_target_exactly_the_maintained_collection() -> None:
     assert install_all.ACTIVE_BUNDLES == ACTIVE_BUNDLES
     assert parity.ACTIVE_BUNDLES == ACTIVE_BUNDLES
+    assert install_all.LEARNING_PACK == LEARNING_PACK
+    assert parity.LEARNING_PACK == LEARNING_PACK
     for bundle in ACTIVE_BUNDLES:
         module = _load(f"{bundle}_installer", SKILLS_ROOT / bundle / "install.py")
         assert module.SKILL_FILES == ("SKILL.md",)
@@ -55,6 +58,7 @@ def test_clean_install_contains_only_authoritative_skill_files(
     assert {
         entry.name for entry in destination.iterdir() if not entry.name.startswith(".")
     } == set(ACTIVE_BUNDLES)
+    assert not (destination / LEARNING_PACK).exists()
     for bundle in ACTIVE_BUNDLES:
         assert {entry.name for entry in (destination / bundle).iterdir()} == {"SKILL.md"}
         assert (destination / bundle / "SKILL.md").read_bytes() == (
@@ -157,6 +161,17 @@ def test_parity_rejects_changed_extra_and_retired_surfaces(
         retired_wrapper=wrapper,
         discovery_roots=(destination,),
     ) == []
+
+    learning_destination = destination / LEARNING_PACK
+    learning_destination.parent.mkdir(parents=True)
+    learning_destination.write_text("{}\n", encoding="utf-8")
+    problems = parity.compare_install(
+        destination,
+        retired_wrapper=wrapper,
+        discovery_roots=(destination,),
+    )
+    assert any("Git artifact" in problem for problem in problems)
+    learning_destination.unlink()
 
     (destination / "sql_optimizer" / "SKILL.md").write_text("changed", encoding="utf-8")
     problems = parity.compare_install(

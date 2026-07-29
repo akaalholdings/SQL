@@ -9,6 +9,7 @@ TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
 def test_triage_is_self_contained_and_read_only() -> None:
     assert TEXT.startswith("---\nname: sql-health-triage\n")
+    assert 'metadata:\n  version: "1.0.0"' in TEXT
     assert "This skill is permanently read-only" in TEXT
     assert "Never call DDL, DML, unrestricted execution" in TEXT
     assert not re.search(r"https?://|[A-Za-z]+Guide\.md", TEXT)

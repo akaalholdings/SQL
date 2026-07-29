@@ -1,6 +1,8 @@
 ---
 name: sql-plan-enforcer
 description: Review and safely stabilize Azure SQL Database Query Store plans through azure-sql-mcp. Detects regressions, prepares reviewed intents, applies only policy-authorized prepared actions, verifies aligned windows, and restores exact prior force/hint state on regression.
+metadata:
+  version: "1.0.0"
 ---
 
 # Azure SQL plan enforcer
@@ -25,6 +27,59 @@ This skill does not own database mutations, policy, ledgers, or local state. MCP
 - Force only an observed plan tied to stable identity and measured evidence.
 - Unknown or Automatic Tuning/engine ownership is review-only. Never race or override engine-owned controls.
 - Never expose credentials, environment values, raw private SQL, or result data.
+
+## Runtime contract gate
+
+Call `check_runtime_status`, then `list_databases`, then `check_capabilities`
+before any review, preparation, verification, or rollback tool. Use only the
+database the user selects from the returned allowlist. Record stable process
+`runtime_fingerprint`, stable `runtime_compatibility_fingerprint`,
+`tool_schema_fingerprint`, and `sanitized_config_fingerprint`; a missing,
+changed, malformed, stale, incompatible, or remote-disabled contract is a hard
+stop. After this runtime and database gate passes, call `recall_lessons` with
+`skill=sql-plan-enforcer` and `skill_version=1.0.0`, the stable
+`runtime_compatibility_fingerprint`, tool-schema and sanitized-config
+fingerprints, and only supported optional
+`query_fingerprint`, `tags`, and `database_name`. Never send raw SQL,
+credentials, parameter values, result rows, or hidden reasoning.
+
+## Evidence-governed learning loop
+
+Lessons remain advisory only: they may rank review attention or expose risk, but
+they never authorize preparation/apply, override ownership or policy, or weaken
+verification, cleanup, rollback, equivalence, or the review-only default. Use evidence before
+judgment. Once real evidence references exist and before a material control
+judgment, call `record_decision` with the supported `DecisionRecordV1` fields:
+`skill`, `skill_version`, `learning_key`, `subject_kind`,
+`subject_fingerprint`, `consumed_evidence_refs`, `based_on_review_ids`, `tactic`,
+`expected_result`, `confidence`, `uncertainty`, evaluator/runtime/schema/config
+fingerprints, both runtime fingerprints, and applicable case/session/query
+references. Record structured conclusions only; never store hidden reasoning.
+Use `subject_kind=plan` and record a control or hold decision before
+`prepare_plan_action`.
+
+`prepare_plan_action` remains unlinked by the approved schema. Pass the
+recorded decision id to `verify_plan_action`, `rollback_plan_action`, or a
+resolved `resolve_handoff` call. Each terminal action returns
+`terminal_link_id`; only then call `review_decision` as `OutcomeReviewV1` with that link in
+`terminal_evidence_refs`, plus `observed_result`, `prediction_error`,
+`counterexamples`, `next_observation`, and any correction. Never review
+pending, partial, timed-out, stale, inferred, or unlinked results. A failed
+prediction must include its correction and counterexample before considering
+another control; the next decision cites the prior review through
+`based_on_review_ids`. Propose a lesson only after review; the skill cannot
+activate or approve it.
+
+Use the typed `HandoffV1` lifecycle for cross-skill work: `create_handoff` takes
+`source_skill`, `target_skill`, redacted `objective`, immutable `evidence_refs`,
+`constraints`, `gaps`, `acceptance_criteria`, and shared `case_id`/`session_id`;
+`get_handoff` retrieves it; `resolve_handoff` requires an allowed action,
+`expected_version`, the recorded `decision_id`, and terminal recipient evidence
+or an explicit human decision when resolving. Handoffs never grant
+authorization. If any learning or handoff tool is unavailable, malformed,
+stale, incompatible, or remote-disabled, retain existing review-only behavior
+unchanged. Do not create a substitute local ledger, install memory, or persist
+raw SQL.
 
 ## Durable lifecycle
 
