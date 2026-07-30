@@ -275,11 +275,49 @@ def test_optimizer_retries_evidence_once_and_recovers_persisted_case() -> None:
     for phrase in (
         "retry `collect_performance_evidence` exactly once",
         "same request and same idempotency key",
+        "structured-diagnostic-authorized",
+        "never retry blindly",
         "retrieve persisted case evidence",
         "core benchmark/comparison path works",
         "explicit gap",
     ):
         assert phrase in TEXT
+
+
+def test_optimizer_consumes_live_tuning_identity_parameter_and_availability_contracts() -> None:
+    normalized = " ".join(TEXT.split())
+    for phrase in (
+        "exact `query_store_query_id`",
+        "pass it unchanged to `start_performance_case` and `collect_performance_evidence`",
+        "never request fuzzy identity matching",
+        "Fingerprint v1 parameter-case matching is exact, not fuzzy",
+        "`parameter_case_receipts[].name`, `fingerprint_v1`, and `matching_rules`",
+        "returned case index and received/expected fingerprints",
+        "original parameter-case payload, including values, only in active orchestration context",
+        "`parameter_case_receipts` and `canonical_parameter_case_template` are value-free",
+        "never expect the server to persist values",
+        "requires exactly `name`, `values`, `types`, and positive `weight`",
+        "`name` must be nonblank, unknown keys are rejected",
+        "derived session availability",
+        "`accepts_new_work=false`, effective status `expired`",
+        "documented late-result reconciliation and finalization",
+        "effective timeout reporting",
+        "`check_runtime_status.timeouts.evidence_workflow_seconds`",
+        "`session_workflow_seconds`",
+        "minimum valid screening work",
+        "universal `window_minutes` ceiling",
+        "`is_unused=null` means unknown coverage",
+        "successful per-query `missing_index_count=0` means no optimizer hint",
+        "filtered against existing indexes",
+        "missing-index provenance",
+    ):
+        assert phrase in normalized
+
+
+def test_optimizer_does_not_guess_case_identity_or_treat_missing_index_signals_as_proof() -> None:
+    normalized = " ".join(TEXT.split())
+    assert "never guess" in normalized
+    assert "not proof that no index could help" in normalized
 
 
 def test_optimizer_gates_volatile_and_unordered_proof_claims() -> None:
@@ -359,8 +397,10 @@ def test_optimizer_orders_lineage_work_before_terminal_session_retrieval() -> No
         "Retain the complete benchmark request and exact idempotency key",
         "`get_tuning_session` reconciles its evidence",
         "Retrieve a lost response there rather than rerunning it with a new key",
-        "A `completed` or `cancelled` session is retrieval-only",
-        "do not submit new or replayed benchmark work",
+        "Read derived session availability",
+        "`accepts_new_work=false`, effective status `expired`, `completed`, or `cancelled` is retrieval-only",
+        "allow documented late-result reconciliation and finalization",
+        "do not submit new/replayed benchmark work",
     ):
         assert phrase in TEXT
 
