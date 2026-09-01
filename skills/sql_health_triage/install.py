@@ -14,7 +14,12 @@ import uuid
 SKILL_NAME = "sql_health_triage"
 SKILL_FILES = ("SKILL.md",)
 SKILL_DIRS: tuple[str, ...] = ()
-KNOWN_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+KNOWN_BUNDLES = (
+    "sql_optimizer",
+    "sql_plan_enforcer",
+    "sql_health_triage",
+    "sql_index_manager",
+)
 
 
 def resolve_dest(explicit: str | None = None) -> pathlib.Path:

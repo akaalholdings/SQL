@@ -11,7 +11,12 @@ import sys
 from collections.abc import Sequence
 
 ROOT = pathlib.Path(__file__).resolve().parent
-ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+ACTIVE_BUNDLES = (
+    "sql_optimizer",
+    "sql_plan_enforcer",
+    "sql_health_triage",
+    "sql_index_manager",
+)
 LEARNING_PACK = pathlib.Path("knowledge") / "azure-sql-mcp-learning-pack.json"
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 HOST_SKILL_DIRS = (

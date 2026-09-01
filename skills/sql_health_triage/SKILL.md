@@ -2,7 +2,7 @@
 name: sql-health-triage
 description: Read-only Azure SQL Database performance and incident triage. Collects normalized evidence through azure-sql-mcp, distinguishes healthy, actionable, partial, and inconclusive outcomes, identifies query, plan, blocking, resource, statistics, and parameter-sensitivity causes, and hands work to the correct owner without changing the database.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Azure SQL health triage
@@ -29,7 +29,7 @@ the returned allowlist. Record the process `runtime_fingerprint`, stable
 `sanitized_config_fingerprint`; a missing, changed, malformed, stale,
 incompatible, or remote-disabled contract is a hard stop for measured work.
 After this runtime and database gate passes, call `recall_lessons` with
-`skill=sql-health-triage` and `skill_version=1.0.0`, the stable
+`skill=sql-health-triage` and `skill_version=1.0.1`, the stable
 `runtime_compatibility_fingerprint`, tool-schema and sanitized-config
 fingerprints, and only supported optional identifiers:
 `query_fingerprint`, `tags`, and `database_name`. Never send raw SQL,
@@ -76,6 +76,12 @@ incompatible, or remote-disabled, retain the existing read-only behavior
 unchanged; do not create a substitute local ledger, install memory, or persist
 raw SQL. Learning can never weaken policy, authorization, equivalence, cleanup,
 verification, rollback, or this skill's scope.
+
+V1 index-manager routing is the exception to the typed handoff rule. Until a
+public index evidence bridge and terminal-link contract exist, route work to
+`sql-index-manager` in the report only; do not create a typed `HandoffV1` for
+that target and do not relabel case, snapshot, review, or run ids as learning
+evidence refs.
 
 ## Outcome contract
 
@@ -126,7 +132,7 @@ Choose the shortest read-only path that tests the symptom, then widen only as ne
 - Common/rare/NULL/boundary parameters, statistics evidence, and recent plan changes.
 - Database CPU, data I/O, log I/O, worker/session, and storage governance over the same window.
 
-Route a stable rewrite/index problem to `sql-optimizer`; a proven plan regression to `sql-plan-enforcer` review; capacity, application concurrency, configuration, or transaction design to the human.
+Route a stable single-query rewrite or sandbox index problem to `sql-optimizer`; a portfolio-wide index inventory, overlap, consolidation, or removal review to `sql-index-manager`; a proven plan regression to `sql-plan-enforcer` review; capacity, application concurrency, configuration, or transaction design to the human.
 
 ### Hanging or blocking
 
@@ -183,13 +189,16 @@ Do not turn a broad inventory observation into a recommendation without workload
 
 ## Finding classification
 
-Record severity (`critical`, `high`, `medium`, `low`, or `info`), domain, stable identity, value/units/window, threshold or baseline provenance, causal confidence (`proven`, `strong`, `possible`, or `unknown`), completeness, action, and owner (`sql-optimizer`, `sql-plan-enforcer`, `human`, or `observe`).
+Record severity (`critical`, `high`, `medium`, `low`, or `info`), domain, stable identity, value/units/window, threshold or baseline provenance, causal confidence (`proven`, `strong`, `possible`, or `unknown`), completeness, action, and owner (`sql-optimizer`, `sql-index-manager`, `sql-plan-enforcer`, `human`, or `observe`).
 
 Use `proven` only when aligned evidence demonstrates the causal link.
 
 ## Handoffs
 
 - Optimizer: case id, stable query identity, parameter buckets, evidence ids/artifact references, semantic gaps, and objective.
+- Index manager: report-only route with database/object/index identity,
+  returned portfolio identifiers, coverage, overlap/protection blockers, and
+  the portfolio decision needed; no typed learning handoff in V1.
 - Plan enforcer: case id, query/plan identities, ownership, aligned windows/buckets, and regression evidence.
 - Human: decision required, blast radius, evidence, and safest verification step.
 

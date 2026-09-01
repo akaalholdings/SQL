@@ -7,7 +7,7 @@ Public monorepo for Azure SQL assessment, migration, performance, and operations
 | Path | Use it for | Output |
 | --- | --- | --- |
 | [`azure-sql-mcp`](https://github.com/akaalholdings/azure-sql-mcp) | Bounded queries, schema metadata, diagnostics, Query Store evidence, and gated administration | Structured evidence, plans, diffs, and MCP artifacts |
-| [`skills/`](skills/) | `sql_health_triage`, `sql_optimizer`, and `sql_plan_enforcer` workflows | Triage findings, optimization packs, and reviewed plan actions |
+| [`skills/`](skills/) | `sql_health_triage`, `sql_optimizer`, `sql_plan_enforcer`, and `sql_index_manager` workflows | Triage findings, optimization packs, index portfolio reviews, and reviewed plan actions |
 | [`Assessment/`](Assessment/) | Read-only SQL Server inventory before migration | Sanitized inventory and target-fit evidence |
 | [`AzureMigration/Assessment/`](AzureMigration/Assessment/) | On-premises SQL Server target assessment | Target recommendations, sizing bands, blockers, and remediation plans |
 | [`AzureMigration/CostSavings/`](AzureMigration/CostSavings/) | Azure SQL estate, usage, cost, and Advisor review | Cost findings and review-ready recommendations |
@@ -73,22 +73,33 @@ python3 check_installed_parity.py --dest ~/.copilot/skills
 
 The collection installer backs up prior managed bundles and retires obsolete copies across known user-level Copilot, Claude, Agents, and Codex skill roots. Parity checks those same discovery surfaces and the retired PATH wrapper.
 
-The three active skills are:
+The four active skills are:
 
 - [`sql_health_triage`](skills/sql_health_triage/SKILL.md): read-only health and incident triage.
-- [`sql_optimizer`](skills/sql_optimizer/SKILL.md): query rewrites and index experiments with disposable-test gates.
+- [`sql_optimizer`](skills/sql_optimizer/SKILL.md): query rewrites and single-query sandbox index experiments with disposable-test gates.
+- [`sql_index_manager`](skills/sql_index_manager/SKILL.md): inventory, review, and recheck of Azure SQL index portfolios, with human change-control routing.
 - [`sql_plan_enforcer`](skills/sql_plan_enforcer/SKILL.md): Query Store review and reversible plan controls.
+
+The index manager is recommend-only. Its portfolio review returns the exact
+artifact filenames `index-review.json`, `index-review.md`,
+`create-candidates.sql`, `consolidation-candidates.sql`, `drop-candidates.sql`,
+`rollback.sql`, and `validation.sql` when available. Snapshot, review,
+as-of-run, and run ids remain opaque portfolio tracking identifiers, not
+artifacts or learning evidence refs; V1 returns `evidence_id=None`. It uses
+exact recurring-request, overlap, protection, stable-epoch, no-gap, and human
+change-control gates; it never executes index DDL.
 
 ## Local database policy
 
 - Do not apply a database change from an uncommitted checkout. Generate the preview or script, review it, and execute it from an approved change surface.
-- A local write is allowed only against an explicitly disposable sandbox with a clear owner, rollback, audit record, and cleanup step.
+- The general no-write rule for the restricted MCP and index-review path has one narrowly gated append-only exception: `capture_index_review_snapshot` may append only to the manually installed dbatools history tables after the returned policy gates pass. This exception does not permit arbitrary SQL, DDL, `UPDATE`, `DELETE`, schema creation, index apply, or production index changes.
+- A local write in the separately scoped optimizer sandbox is allowed only against an explicitly disposable sandbox with a clear owner, rollback, audit record, and cleanup step.
 - Test indexes must use the MCP test-index gates and an allowlisted sandbox database. Remove them after the experiment and retain the evidence, not the database mutation as the handoff.
 - CI, documentation checks, and normal unit tests do not access a database. Integration tests are opt-in and must be run only against an approved non-production target.
 
 ## Safety and credentials
 
-- MCP restricted mode is the default. It validates and bounds read-only SQL, enforces the database allowlist, and hides admin tools.
+- MCP restricted mode is the default. It validates and bounds read-only SQL, enforces the database allowlist, and hides admin tools. The separate index-review profile is restricted and permits only its one policy-gated append-only snapshot-history write.
 - Unrestricted mode exposes the administration surface but still requires the tool call, `dry_run`, write-policy, audit, and target-database gates.
 - Keep passwords, tokens, client secrets, connection strings, private endpoints, and SQL text containing sensitive literals out of Git and command history. `.env.example` files contain placeholders only.
 - A read-only client flag is not a SQL security boundary. Enforce least privilege in Azure SQL and use application guards as defense in depth.
@@ -121,8 +132,8 @@ git clone https://github.com/akaalholdings/azure-sql-mcp.git ../azure-sql-mcp
 ```bash
 (
   cd skills
-  python3 -m pytest -q sql_optimizer/tests sql_plan_enforcer/tests sql_health_triage/tests tests
-  python3 -m compileall -q sql_optimizer sql_plan_enforcer sql_health_triage install_all.py check_installed_parity.py
+  python3 -m pytest -q sql_optimizer/tests sql_plan_enforcer/tests sql_health_triage/tests sql_index_manager/tests tests
+  python3 -m compileall -q sql_optimizer sql_plan_enforcer sql_health_triage sql_index_manager install_all.py check_installed_parity.py
   python3 -m ruff check . ../scripts
   tmp_dir="$(mktemp -d)"
   HOME="$tmp_dir/home" python3 install_all.py \

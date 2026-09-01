@@ -8,7 +8,12 @@ import pytest
 
 SKILLS_ROOT = pathlib.Path(__file__).resolve().parents[1]
 REPO_ROOT = SKILLS_ROOT.parent
-ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+ACTIVE_BUNDLES = (
+    "sql_optimizer",
+    "sql_plan_enforcer",
+    "sql_health_triage",
+    "sql_index_manager",
+)
 LEARNING_PACK = pathlib.Path("knowledge") / "azure-sql-mcp-learning-pack.json"
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 RETIRED_COMPONENT = "".join(("con", "nector"))  # noqa: FLY002
@@ -45,6 +50,7 @@ def test_release_tools_target_exactly_the_maintained_collection() -> None:
         module = _load(f"{bundle}_installer", SKILLS_ROOT / bundle / "install.py")
         assert module.SKILL_FILES == ("SKILL.md",)
         assert module.SKILL_DIRS == ()
+        assert module.KNOWN_BUNDLES == ACTIVE_BUNDLES
 
 
 def test_clean_install_contains_only_authoritative_skill_files(

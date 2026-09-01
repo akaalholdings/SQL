@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the three maintained SQL skills and retire obsolete discovery surfaces."""
+"""Install the four maintained SQL skills and retire obsolete discovery surfaces."""
 
 from __future__ import annotations
 
@@ -17,7 +17,12 @@ import uuid
 from collections.abc import Sequence
 
 ROOT = pathlib.Path(__file__).resolve().parent
-ACTIVE_BUNDLES = ("sql_optimizer", "sql_plan_enforcer", "sql_health_triage")
+ACTIVE_BUNDLES = (
+    "sql_optimizer",
+    "sql_plan_enforcer",
+    "sql_health_triage",
+    "sql_index_manager",
+)
 LEARNING_PACK = pathlib.Path("knowledge") / "azure-sql-mcp-learning-pack.json"
 RETIRED_BUNDLE = "_".join(("query", "geneva", "db"))  # noqa: FLY002
 HOST_SKILL_DIRS = (

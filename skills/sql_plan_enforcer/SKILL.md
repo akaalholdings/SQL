@@ -2,7 +2,7 @@
 name: sql-plan-enforcer
 description: Review and safely stabilize Azure SQL Database Query Store plans through azure-sql-mcp. Detects regressions, prepares reviewed intents, applies only policy-authorized prepared actions, verifies aligned windows, and restores exact prior force/hint state on regression.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Azure SQL plan enforcer
@@ -37,7 +37,7 @@ database the user selects from the returned allowlist. Record stable process
 `tool_schema_fingerprint`, and `sanitized_config_fingerprint`; a missing,
 changed, malformed, stale, incompatible, or remote-disabled contract is a hard
 stop. After this runtime and database gate passes, call `recall_lessons` with
-`skill=sql-plan-enforcer` and `skill_version=1.0.0`, the stable
+`skill=sql-plan-enforcer` and `skill_version=1.0.1`, the stable
 `runtime_compatibility_fingerprint`, tool-schema and sanitized-config
 fingerprints, and only supported optional
 `query_fingerprint`, `tags`, and `database_name`. Never send raw SQL,
@@ -81,6 +81,12 @@ stale, incompatible, or remote-disabled, retain existing review-only behavior
 unchanged. Do not create a substitute local ledger, install memory, or persist
 raw SQL.
 
+V1 index-manager routing is the exception to the typed handoff rule. Until a
+public index evidence bridge and terminal-link contract exist, route work to
+`sql-index-manager` in the report only; do not create a typed `HandoffV1` for
+that target and do not relabel case, snapshot, review, or run ids as learning
+evidence refs.
+
 ## Durable lifecycle
 
 Use:
@@ -103,7 +109,7 @@ Only MCP transitions mutation state. Generated prose or SQL is not an applied ac
 4. Use `plan_enforcer_tick` only as a preview/ranking aid.
 5. Reject identity-ambiguous, truncated, stale, cross-window, or ownership-unknown candidates from apply.
 
-Rank by proven impact, recurrence, evidence quality, blast radius, and reversibility. Route rewrite/index needs to `sql-optimizer` by performance case id.
+Rank by proven impact, recurrence, evidence quality, blast radius, and reversibility. Route one-query rewrite or sandbox index experiments to `sql-optimizer` by performance case id; route portfolio-wide index inventory, overlap, consolidation, and removal review to `sql-index-manager` with returned portfolio context.
 
 ## 2. Build a reviewed intent
 
@@ -181,6 +187,6 @@ Engine-owned recommendations, automatic last-good-plan actions, and unknown owne
 4. **Apply result** — only for an authorized prepared intent; durable state and reconciliation, never raw SQL.
 5. **Verification** — keep/rollback/hold, aligned windows/buckets, medians/spread, guardrails, and gaps.
 6. **Rollback/restoration** — exact restoration result and unresolved unknown state.
-7. **Handoffs** — rewrite/index work to optimizer; ownership/policy decisions to human.
+7. **Handoffs** — one-query rewrite/index experiments to optimizer; portfolio-wide index review to `sql-index-manager`; ownership/policy decisions to human.
 
 If no candidate is eligible, apply nothing. Review mode must never imply execution.

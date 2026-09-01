@@ -43,11 +43,18 @@ _RETIRED_NAMES = {
     _join(("query", "_", "geneva", "_", "db")),
     _join(("query", "-", "geneva", "-", "db")),
 }
+_RETIRED_INDEX_TOOL_NAMES = {
+    _join(("get_index_portfolio_", "snapshot")),
+    _join(("capture_index_portfolio_", "snapshot")),
+    _join(("classify_index_", "portfolio")),
+    _join(("recheck_index_", "portfolio")),
+}
 _RETIRED_TEXT = {
     _join(("connect", "or")),
     _join(("query", "_", "geneva", "_", "db")),
     _join(("query", "-", "geneva", "-", "db")),
 }
+_RETIRED_TEXT.update(_RETIRED_INDEX_TOOL_NAMES)
 
 
 @dataclass(frozen=True)

@@ -44,9 +44,9 @@ jobs:
       - name: Install skill verification tools
         run: python -m pip install --disable-pip-version-check pytest ruff
       - name: Run skill tests
-        run: python -m pytest -q skills/sql_optimizer/tests skills/sql_plan_enforcer/tests skills/sql_health_triage/tests skills/tests
+        run: python -m pytest -q skills/sql_optimizer/tests skills/sql_plan_enforcer/tests skills/sql_health_triage/tests skills/sql_index_manager/tests skills/tests
       - name: Compile skill runtime helpers
-        run: python -m compileall -q skills/sql_optimizer skills/sql_plan_enforcer skills/sql_health_triage skills/install_all.py skills/check_installed_parity.py scripts
+        run: python -m compileall -q skills/sql_optimizer skills/sql_plan_enforcer skills/sql_health_triage skills/sql_index_manager skills/install_all.py skills/check_installed_parity.py scripts
       - name: Run Ruff on skills and integrity scripts
         run: python -m ruff check skills scripts
       - name: Verify clean-install parity

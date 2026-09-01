@@ -2,7 +2,7 @@
 name: sql-optimizer
 description: Tune one Azure SQL Database PaaS query through rewrite-first static analysis and an evidence-bound azure-sql-mcp workflow. Produce complete SQL, prove equivalence, benchmark parameter buckets, test gated sandbox indexes or views, preserve every experiment in a leaderboard, and hand off only a validated deployable winner.
 metadata:
-  version: "2.3.0"
+  version: "2.3.1"
 ---
 
 # Azure SQL Database query optimizer
@@ -19,7 +19,7 @@ Start from the query text. Produce safe concrete rewrite candidates before plan 
 - Automatically execute only read-only SELECT-shaped SQL. Analyze DML or side-effecting procedures from supplied text and evidence, but do not execute them through this workflow. The only DDL exceptions are separately authorized MCP sandbox index/view workflows; they are never automatic.
 - Preserve schema qualification, result names/types/shape, duplicates, NULL and three-valued logic, ordering and ties, collation, date precision, isolation, nondeterminism, and parameter compile/runtime semantics.
 - Prefer a rewrite over DDL when comparable. Treat every index or view change as an experiment; one query cannot prove a production-wide index drop or write-cost tradeoff.
-- Do not force plans or set Query Store hints. Hand plan-control needs to `sql-plan-enforcer` with the shared case/session identifier.
+- Do not force plans or set Query Store hints. Hand plan-control needs to `sql-plan-enforcer` with the shared case/session identifier. This skill owns one-query rewrites and separately gated non-production index experiments only; route portfolio-wide index inventory, overlap, consolidation, and removal review to `sql-index-manager` with returned portfolio context.
 
 ## Runtime contract gate
 
@@ -48,7 +48,7 @@ The learning plane is advisory only: it may reorder exploration or highlight a
 risk, but it never authorizes execution, changes equivalence, or overrides
 policy, cleanup, verification, rollback, or the candidate state machine. Do not
 recall until the runtime and database gates above have passed. Then call
-`recall_lessons` with `skill=sql-optimizer` and `skill_version=2.3.0`, the stable
+`recall_lessons` with `skill=sql-optimizer` and `skill_version=2.3.1`, the stable
 `runtime_compatibility_fingerprint`,
 `tool_schema_fingerprint`, and `sanitized_config_fingerprint`, plus only
 supported optional `query_fingerprint`, `tags`, and `database_name`. Never send
@@ -88,7 +88,7 @@ Use the typed `HandoffV1` lifecycle for cross-skill work: `create_handoff` takes
 or an explicit human decision when resolving. Handoffs never grant
 authorization. If any learning or handoff tool is unavailable, malformed,
 stale, incompatible, or remote-disabled, retain existing static behavior, do
-not create a substitute local ledger, install memory, or persist raw SQL.
+not create a substitute local ledger, install memory, or persist raw SQL. V1 index-manager routing is the exception to the typed handoff rule: until a public index evidence bridge and terminal-link contract exist, route work to `sql-index-manager` in the report only; do not create a typed `HandoffV1` for that target and do not relabel case, snapshot, review, or run ids as learning evidence refs.
 
 ## Required first response behavior: rewrite-first response contract
 
@@ -332,7 +332,7 @@ Do not prescribe `OPTION (RECOMPILE)`, `OPTIMIZE FOR`, `OPTIMIZE FOR UNKNOWN`, a
 
 - recompilation spends CPU and removes plan reuse; it can be appropriate only when execution savings dominate compile cost;
 - optimize-for choices trade one distribution for another and must be measured across common and rare values;
-- Query Store hints and forcing belong to `sql-plan-enforcer`, not this skill;
+- Query Store hints and forcing belong to `sql-plan-enforcer`, not this skill; portfolio-wide index inventory, overlap, consolidation, and removal review belong to `sql-index-manager`, not this skill;
 - Parameter Sensitive Plan optimization, Optional Parameter Plan Optimization, memory-grant feedback, cardinality feedback, batch mode, deferred compilation, and UDF inlining depend on compatibility level, database-scoped configuration, query shape, and observed runtime state.
 
 Use `check_capabilities`, database configuration, Query Store variants, and actual plan evidence before crediting or disabling an intelligent-query-processing feature. A compatibility-level change affects the whole database and is never a single-query tuning experiment.

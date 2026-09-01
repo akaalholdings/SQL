@@ -9,7 +9,7 @@ TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
 def test_optimizer_is_one_self_contained_workflow() -> None:
     assert TEXT.startswith("---\nname: sql-optimizer\n")
-    assert 'metadata:\n  version: "2.3.0"' in TEXT
+    assert 'metadata:\n  version: "2.3.1"' in TEXT
     assert "Required first response behavior" in TEXT
     assert "Missing plan lowers confidence" not in TEXT  # wording stays imperative, not a slogan
     assert "A missing plan lowers confidence" in TEXT

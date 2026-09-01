@@ -532,7 +532,7 @@ def validate_learning_loop_response(response: str) -> list[str]:
     recall_args = recall_call.group("args") if recall_call else ""
     exact_recall = (
         recall_call is not None
-        and re.search(r"skill_version\s*=\s*2\.3\.0", recall_args) is not None
+        and re.search(r"skill_version\s*=\s*2\.3\.1", recall_args) is not None
         and "runtime_compatibility_fingerprint" in recall_args
         and "tool_schema_fingerprint" in recall_args
         and "sanitized_config_fingerprint" in recall_args

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the sql_optimizer Copilot skill."""
+"""Install the sql_index_manager Copilot skill."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import sys
 import tempfile
 import uuid
 
-SKILL_NAME = "sql_optimizer"
+SKILL_NAME = "sql_index_manager"
 SKILL_FILES = ("SKILL.md",)
 SKILL_DIRS: tuple[str, ...] = ()
 KNOWN_BUNDLES = (
@@ -57,7 +57,9 @@ def install(skills_root: pathlib.Path) -> pathlib.Path:
     if destination.is_symlink():
         raise RuntimeError(f"Refusing symbolic-link destination: {destination}")
 
-    stage_root = pathlib.Path(tempfile.mkdtemp(prefix=f".{SKILL_NAME}.stage-", dir=skills_root))
+    stage_root = pathlib.Path(
+        tempfile.mkdtemp(prefix=f".{SKILL_NAME}.stage-", dir=skills_root)
+    )
     staged = stage_root / SKILL_NAME
     staged.mkdir(mode=0o700)
     shutil.copy2(source, staged / "SKILL.md")

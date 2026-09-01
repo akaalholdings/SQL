@@ -24,7 +24,7 @@ parameter value, result row, or evidence reference.
 
 Return exactly one triage outcome and an ordered trace that:
 - calls check_runtime_status, list_databases, and check_capabilities before
-  recall_lessons, using exact skill=sql-health-triage, skill_version=1.0.0,
+  recall_lessons, using exact skill=sql-health-triage, skill_version=1.0.1,
   the stable runtime_compatibility_fingerprint, and only supported
   fingerprint/identifier fields; do not pass the process runtime_fingerprint
   to recall;
@@ -72,7 +72,7 @@ def validate_response(response: str) -> list[str]:
     recall_args = recall_call.group("args") if recall_call else ""
     exact_recall = (
         recall_call is not None
-        and re.search(r"skill_version\s*=\s*1\.0\.0", recall_args) is not None
+        and re.search(r"skill_version\s*=\s*1\.0\.1", recall_args) is not None
         and "runtime_compatibility_fingerprint" in recall_args
         and "tool_schema_fingerprint" in recall_args
         and "sanitized_config_fingerprint" in recall_args

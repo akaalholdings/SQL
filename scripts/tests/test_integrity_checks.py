@@ -56,6 +56,17 @@ class RetiredPathTests(unittest.TestCase):
             (root / "README.md").write_text("Retired paths remain absent.\n", encoding="utf-8")
             self.assertEqual(check_retired_paths.check_retired_paths(root), [])
 
+    def test_reports_retired_index_portfolio_tool_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            retired_reference = "".join(  # noqa: FLY002
+                ("get_index_portfolio_", "snapshot")
+            )
+            (root / "README.md").write_text(retired_reference + "\n", encoding="utf-8")
+            issues = check_retired_paths.check_retired_paths(root)
+            self.assertEqual(len(issues), 1)
+            self.assertEqual(issues[0].reason, "retired reference found")
+
 
 class SecretScanTests(unittest.TestCase):
     def test_reports_detector_and_location_without_value(self) -> None:

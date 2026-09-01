@@ -1,9 +1,10 @@
 # Azure SQL performance skills for VS Code Copilot
 
-This folder contains the three maintained Copilot skills:
+This folder contains the four maintained Copilot skills:
 
 - `sql-health-triage`: read-only incident and health diagnosis.
 - `sql-optimizer`: iterative single-query rewriting, equivalence checking, benchmarking, and sandbox index experiments.
+- `sql-index-manager`: restricted index portfolio inventory, review, and recheck with one narrow append-only snapshot-history write, advisory lesson recall, and recommend-only human change-control routing.
 - `sql-plan-enforcer`: reviewed Query Store plan controls with verification and exact rollback.
 
 Each installed bundle contains one authoritative file: `SKILL.md`. Database execution, durable cases, tuning sessions, index leases, and plan-action intents belong to `azure-sql-mcp`.
@@ -21,6 +22,7 @@ comes only from the scoped local MCP learning store.
 | Diagnose broad slowness, blocking, waits, resource pressure, regressions, or an incident | `sql-health-triage` | `triage` |
 | Rewrite and tune one SELECT query without database writes | `sql-optimizer` | `optimizer` |
 | Test a temporary index in an approved non-production database | `sql-optimizer` | `sandbox` |
+| Review an Azure SQL Database index portfolio | `sql-index-manager` | `index-review` |
 | Review Query Store plan stability without changes | `sql-plan-enforcer` | `enforcer-review` |
 | Apply one explicitly authorized prepared plan action | `sql-plan-enforcer` | `enforcer-apply` |
 
@@ -47,7 +49,7 @@ python3 skills/install_all.py --dest "$HOME/.copilot/skills"
 python3 skills/check_installed_parity.py --dest "$HOME/.copilot/skills"
 ```
 
-The collection installer stages all three skills, replaces each managed bundle transactionally, removes stale files from earlier skill versions, and archives obsolete payloads found under the selected destination or known user-level Copilot, Claude, Agents, and Codex skill roots. It changes no unrelated skill directory.
+The collection installer stages all four skills, replaces each managed bundle transactionally, removes stale files from earlier skill versions, and archives obsolete payloads found under the selected destination or known user-level Copilot, Claude, Agents, and Codex skill roots. It changes no unrelated skill directory.
 
 Reload the VS Code window after installation so Copilot refreshes skill metadata.
 
@@ -57,7 +59,7 @@ To install one skill intentionally:
 python3 skills/sql_optimizer/install.py --dest "$HOME/.copilot/skills"
 ```
 
-A single-skill install does not synchronize the other two. Use `install_all.py` for normal upgrades.
+A single-skill install does not synchronize the other three. Use `install_all.py` for normal upgrades.
 
 ## Configure MCP locally
 
@@ -93,6 +95,25 @@ Run `azure-sql-mcp` through local stdio from VS Code. Create `.vscode/mcp.json` 
 
 Use an Azure CLI login or managed identity for `entra-default`. Keep server names, database names, tenant information, usernames, passwords, tokens, and policy paths local. On first use, reload VS Code, enable the server in Copilot Chat, call `list_databases`, then call `check_capabilities`. Measured tuning requires `azure-sql-mcp` 2.1.0 or newer and `mcp_contract.performance_tuning=1`; restart-safe view work also requires `mcp_contract.durable_view_change=1`. Version 2.1.0 sizes the outer workflow timeout from the local per-request execution ceiling and the query timeout, then bounds it by the durable session deadline, so a policy-authorized multi-hour campaign is not cancelled by the old one-query wrapper. If either contract is missing, update `azure-sql-mcp` or stay in the optimizer's static, unmeasured mode. Select only a returned database that is in the configured allowlist.
 
+For portfolio review, use a separate local stdio server entry with
+`AZURE_SQL_PROFILE=index-review`, `AZURE_SQL_TOOL_GROUPS=core,performance`,
+and `AZURE_SQL_ACCESS_MODE=restricted`.
+The public MCP contract remains `2.3.0`. The selected database must be returned
+by `list_databases` and the capability response must include
+`mcp_contract.index_portfolio_review=1`. The index-review surface is
+restricted, with only one narrow append-only snapshot-history write. The
+selected database policy must return `allow_read=true` for portfolio evidence;
+`allow_index_history_write` defaults to `false`, so capture requires an
+explicit returned `allow_index_history_write=true` as well. Capture is a
+separate explicit tool step, and only after both policy gates are verified may
+the workflow call `capture_index_review_snapshot`; it then calls
+`review_index_portfolio` using the returned run. `idempotency_key` is optional:
+the MCP default may be used, and a supplied key must retain same-key no-retry
+safety. The fixed capability value `index_review_min_observation_days=90` is
+not a per-database policy key. A database policy may optionally return
+`business_cycle_extension_days`. The surface does not expose index DDL,
+arbitrary SQL, admin, benchmark, maintenance, or Database Watcher tools.
+
 For static rewrites, MCP and the policy file are optional. For measured rewrites, the selected policy entry must allow reads and benchmarks. For a disposable index or view test, change to a separate local server entry with `AZURE_SQL_PROFILE=sandbox`, `AZURE_SQL_TOOL_GROUPS=core,performance,admin`, local stdio, `AZURE_SQL_ACCESS_MODE=unrestricted`, `AZURE_SQL_WRITE_POLICY=apply`, and a non-production database policy. View apply also requires `AZURE_SQL_PERSIST_VIEW_SQL_STATE=true`; index testing does not. Never use that entry for production.
 
 ## Database policy
@@ -106,6 +127,9 @@ A policy entry controls:
 - disposable test indexes;
 - prepared sandbox view changes;
 - prepared plan actions;
+- append-only index review history through `allow_index_history_write`,
+  disabled by default;
+- optional `business_cycle_extension_days` for index-review removal review;
 - maximum benchmark executions;
 - environment classification.
 
@@ -122,6 +146,8 @@ Keep this synthetic policy outside Git and set its path in `AZURE_SQL_DATABASE_P
       "allow_test_indexes": true,
       "allow_view_apply": true,
       "allow_plan_apply": false,
+      "allow_index_history_write": false,
+      "business_cycle_extension_days": 0,
       "max_benchmark_executions": 80,
       "max_tuning_candidates": 60,
       "max_tuning_session_executions": 2000,
@@ -134,6 +160,8 @@ Keep this synthetic policy outside Git and set its path in `AZURE_SQL_DATABASE_P
       "allow_test_indexes": false,
       "allow_view_apply": false,
       "allow_plan_apply": false,
+      "allow_index_history_write": false,
+      "business_cycle_extension_days": 0,
       "max_benchmark_executions": 0,
       "max_tuning_candidates": 0,
       "max_tuning_session_executions": 0,
@@ -143,7 +171,7 @@ Keep this synthetic policy outside Git and set its path in `AZURE_SQL_DATABASE_P
 }
 ```
 
-Unknown databases fail closed for benchmarks, temporary indexes, and plan apply. Production should remain read-only unless a reviewed exception is deliberately configured. The policy file is local and uncommitted.
+Unknown databases fail closed for benchmarks, temporary indexes, plan apply, and index-history capture. Production should remain read-only for ordinary database operations unless a reviewed exception is deliberately configured; index-review capture remains the one separately gated append-only write. The policy file is local and uncommitted.
 
 ## Use in Copilot Chat
 
@@ -229,6 +257,42 @@ Use sql-plan-enforcer in review mode. Review Query Store regressions for the sel
 Do not prepare or apply anything.
 ```
 
+### Index portfolio review
+
+```text
+Use sql-index-manager in the default review mode for the selected Azure SQL Database.
+Use only the approved capture_index_review_snapshot, review_index_portfolio, and
+get_index_review operations. Reuse returned complete evidence less than 48 hours
+old when available; otherwise verify returned `allow_read=true` and
+`allow_index_history_write=true` for the selected database, request the one
+controlled append-only capture as a separate explicit step, and then invoke
+review with its returned run. Return the deterministic per-index states,
+90-day-minimum stable-epoch/no-gap removal gates, exact overlap evidence,
+blockers, and human DBA owner routing. Do not execute index DDL.
+```
+
+The index manager is recommend-only. It separates catalog, usage, Query Store,
+protection, ownership, and coverage evidence; it never treats a missing or
+`NULL` counter as zero. Portfolio changes remain human change control, and
+`sql-optimizer` remains responsible for one-query rewrite and sandbox tests.
+Its deterministic states keep a protected subject, a valid read delta, or any
+executed Query Store plan reference; create a candidate only for an exact
+recurring request across at least two runtime intervals with a material positive
+existing MCP score, complete Query Store coverage, no exact or covering index,
+and projected storage strictly below 90 percent; consolidate
+only an exact duplicate or strict coverage after full definition comparison;
+and consider removal only for an enabled user-created nonunique standalone
+type-2 rowstore that passes the full 90-day-plus-business-cycle, no-gap,
+stable-epoch, zero-read-delta, measured-cost, and complete coverage gates.
+The returned artifact filenames are exactly these seven: `index-review.json`,
+`index-review.md`, `create-candidates.sql`, `consolidation-candidates.sql`,
+`drop-candidates.sql`, `rollback.sql`, and `validation.sql`. Review,
+`as_of_run_id`, run, snapshot, and artifact identifiers are portfolio tracking
+fields, not learning evidence refs. V1 returns `evidence_id=None`, has no
+terminal link, uses only advisory `recall_lessons`, and does not write learning
+decisions, outcomes, candidates, or typed handoffs. A later recheck and an
+explicit human resolution remain portfolio or change-control facts only.
+
 ### Prepared plan action
 
 ```text
@@ -254,7 +318,7 @@ Plan apply requires explicit authorization for each prepared intent. A long-runn
 2. Run the collection installer against the same destination used previously.
 3. Run parity.
 4. Reload VS Code.
-5. Run the clean-room optimizer acceptance prompt before work use.
+5. Run the clean-room optimizer and index-manager acceptance prompts before work use.
 
 Print the synthetic prompt, paste it into a new Copilot Chat with no prior SQL
 context, save the response outside the repository, then validate it:
@@ -262,6 +326,8 @@ context, save the response outside the repository, then validate it:
 ```bash
 python3 scripts/copilot_optimizer_acceptance.py --print-prompt
 python3 scripts/copilot_optimizer_acceptance.py --response /tmp/copilot-response.md
+python3 scripts/copilot_index_manager_acceptance.py --print-prompt
+python3 scripts/copilot_index_manager_acceptance.py --response /tmp/copilot-index-response.md
 ```
 
 The validator extracts only fenced `sql`/`tsql` blocks and validates the actual
@@ -286,6 +352,8 @@ From the repository root:
 
 ```bash
 uv run --with pytest pytest -q skills scripts/tests
+python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+python3 -m compileall -q skills scripts
 uv run --with ruff ruff check skills scripts
 python3 scripts/check_markdown_links.py
 python3 scripts/check_retired_paths.py
