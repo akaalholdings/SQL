@@ -24,6 +24,14 @@ Do not use this as your steady-state sync engine for huge tables. For recurring 
 - The chunk column is usually the clustered primary key or another indexed monotonically increasing column.
 - Source and destination are reachable from the machine running the script.
 
+## Preflight Inventory
+
+Before choosing an ADF partition column, range size, or degree of parallelism, set the two variables at the top of `inspect_table_for_bulk_copy.sql` and run it against both the source and destination databases.
+
+The query reports the database tier, table size, columns, indexes, physical partitions, candidate range columns, key bounds, constraints, foreign keys, and triggers. It reads catalogue metadata and runs `MIN` and `MAX` against the preferred leading index column; it does not run `COUNT_BIG(*)` over the table.
+
+Use the source results to choose physical-partition or dynamic-range extraction. Compare the source and destination metadata before truncating the destination, changing indexes, or starting the load.
+
 ## Install
 
 Using `uv`:
