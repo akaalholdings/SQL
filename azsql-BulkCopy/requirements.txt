@@ -1,0 +1,5 @@
+mssql-python>=1.13.0
+pyarrow>=19.0
+azure-storage-blob>=12.20
+azure-identity>=1.17
+python-dotenv>=1.0
