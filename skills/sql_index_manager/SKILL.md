@@ -2,7 +2,7 @@
 name: sql-index-manager
 description: Review Azure SQL Database index portfolios through the approved restricted index-review contract. Inventory and classify retained, creation, consolidation, removal-review, and observation subjects with stable-epoch evidence, Query Store recurrence checks, exact overlap analysis, and human DBA change-control routing. Recommend-only; never executes index DDL.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Azure SQL Database index manager
@@ -91,9 +91,28 @@ approval.
 
 ## Runtime, database, and policy gate
 
+Use an operator-owned local stdio MCP process configured with `entra-default`
+or `interactive` authentication. It must obtain its database token for the
+currently signed-in Entra identity. The server and skill contain no fixed user
+principal name and must not request one. One MCP process uses one runtime
+identity; restart it after the operator changes the active Entra sign-in.
+Per-caller Entra delegation for a shared remote MCP service is out of scope.
+
+The workflow uses the current identity's existing effective database
+permissions. It does not create or require an additional database user or role,
+and it must not request permission changes. Review requires `SELECT` on both
+history tables. Capture requires `SELECT` and `INSERT` on both. Missing required
+permissions are a hard stop. Broader effective permissions do not invalidate
+the contract probe. If the identity is `dbo`, the restricted profile, database
+allowlist, and `allow_index_history_write` remain application-layer controls;
+they do not reduce that identity's SQL permissions outside MCP. Report this
+boundary without proposing a new principal or role.
+
 The following order is mandatory for every mode:
 
-1. Call `check_runtime_status`.
+1. Call `check_runtime_status`. Require returned MCP package version `2.3.1` or
+   newer for the current-user Entra permission behaviour. This package gate is
+   separate from the unchanged public contract version.
 2. Call `list_databases` and show only the returned Azure SQL Database choices.
 3. Require a user-selected allowlisted Azure SQL Database from that returned
    list. Never select by name, default, nearest match, or memory.
@@ -180,7 +199,7 @@ result.
 
 ## Evidence-governed advisory recall
 
-The learning identity is exactly `sql-index-manager` 1.0.0 with the registered
+The learning identity is exactly `sql-index-manager` 1.0.1 with the registered
 subject `index`. In V1 this identity is recall-only. A recalled lesson may
 reorder review attention or identify a risk, but cannot authorize capture,
 change a state, weaken a gate, suppress a blocker, change equivalence, or
@@ -191,7 +210,7 @@ After the runtime/database/policy gates pass and an approved index tool has
 returned its portfolio result, call `recall_lessons` with only these supported
 fields:
 
-`recall_lessons(skill=sql-index-manager, skill_version=1.0.0,
+`recall_lessons(skill=sql-index-manager, skill_version=1.0.1,
 runtime_compatibility_fingerprint=<stable>, tool_schema_fingerprint=<stable>,
 sanitized_config_fingerprint=<stable>, database_name=<selected>, tags=<supported>)`
 

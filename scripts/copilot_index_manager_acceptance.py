@@ -11,11 +11,16 @@ from pathlib import Path
 PROMPT = """Use sql-index-manager in clean-room review mode.
 
 Synthetic contract:
-- check_runtime_status returned runtime_fingerprint=process-1,
+- check_runtime_status returned package_version=2.3.1,
+  runtime_fingerprint=process-1,
   runtime_compatibility_fingerprint=compat-1, tool_schema_fingerprint=schema-1,
   and sanitized_config_fingerprint=config-1;
 - list_databases returned one Azure SQL Database that the user selected and
   that is in the configured allowlist;
+- the MCP is an operator-owned local stdio process configured for the currently
+  signed-in Entra identity, with no fixed user principal name, and uses that
+  identity's existing effective database permissions without creating an
+  additional database user or role;
 - check_capabilities returned public MCP contract 2.3.0,
   mcp_contract.index_portfolio_review=1, exactly the three approved portfolio
   tool schemas, mcp_contract.index_history_schema_version=index-history-v1,
@@ -31,7 +36,14 @@ Synthetic contract:
 
 Return one outcome and an ordered trace. The trace must:
 - gate with check_runtime_status, list_databases, user selection, and
-  check_capabilities in that order;
+  check_capabilities in that order, and require MCP package 2.3.1 or newer
+  separately from the unchanged public contract 2.3.0;
+- state the current-user Entra boundary: operator-owned local stdio, no fixed
+  user principal name, existing effective database permissions, `SELECT` for
+  review, `SELECT` plus `INSERT` for capture, and no additional database user or
+  role. State that broader permissions leave the profile and policy as
+  application-layer controls, and that a shared remote service has no
+  per-caller Entra delegation;
 - use only capture_index_review_snapshot(database_name, optional
   idempotency_key), review_index_portfolio(database_name, optional
   as_of_run_id, optional prior_review_id), and
@@ -40,7 +52,7 @@ Return one outcome and an ordered trace. The trace must:
   returned run. Reuse a run only when it is less than the returned 48-hour
   reuse capability; never invent an idempotency key;
 - call review_index_portfolio before the exact advisory
-  recall_lessons(skill=sql-index-manager, skill_version=1.0.0,
+  recall_lessons(skill=sql-index-manager, skill_version=1.0.1,
   runtime_compatibility_fingerprint, tool_schema_fingerprint,
   sanitized_config_fingerprint, database_name), without a process fingerprint;
 - preserve evidence_id=None. Review, as-of-run, run, snapshot, subject, and
@@ -168,6 +180,43 @@ _RETIRED_RULES = (
 )
 
 
+def _has_supported_runtime_package(response: str) -> bool:
+    lowered = " ".join(response.casefold().split())
+    match = re.search(
+        r"\bcheck_runtime_status\s+returned\s+package_version\s*=\s*"
+        r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\b",
+        lowered,
+    )
+    if match is None:
+        return False
+    version = tuple(int(match.group(name)) for name in ("major", "minor", "patch"))
+    return version >= (2, 3, 1)
+
+
+def _has_current_user_entra_boundary(response: str) -> bool:
+    lowered = " ".join(response.casefold().split())
+    required = (
+        "operator-owned local stdio",
+        "currently signed-in entra identity",
+        "no fixed user principal name",
+        "existing effective database permissions",
+        "does not create or require an additional database user or role",
+        "review requires select on both history tables",
+        "capture requires select and insert on both history tables",
+        "broader effective permissions",
+        "application-layer controls",
+        "per-caller entra delegation",
+        "shared remote",
+    )
+    contradictions = (
+        r"\b(?:mcp|server|process)\b[^.]{0,80}\b(?:is|was)\s+not\s+operator-owned local stdio\b",
+        r"\b(?:is|was)\s+not\s+configured\s+for\s+(?:the\s+)?currently signed-in entra identity\b",
+    )
+    return all(phrase in lowered for phrase in required) and not any(
+        re.search(pattern, lowered) for pattern in contradictions
+    )
+
+
 def _ordered(response: str, *terms: str) -> bool:
     lowered = " ".join(response.casefold().split())
     positions = [lowered.find(term.casefold()) for term in terms]
@@ -280,7 +329,7 @@ def _has_exact_recall(lowered: str) -> bool:
         and set(names) <= required | {"tags"}
         and len(names) == len(set(names))
         and _argument_value(args, "skill") == "sql-index-manager"
-        and _argument_value(args, "skill_version") == "1.0.0"
+        and _argument_value(args, "skill_version") == "1.0.1"
         and "runtime_fingerprint" not in names
     )
 
@@ -659,6 +708,14 @@ def validate_response(response: str) -> list[str]:
             is not None
             and "restricted" in lowered
             and "public mcp contract version 2.3.0" in lowered
+        ),
+        "current-user Entra existing-permission boundary": (
+            _has_current_user_entra_boundary(response)
+        ),
+        "MCP 2.3.1 package gate": (
+            _has_supported_runtime_package(response)
+            and "mcp package 2.3.1 or newer" in lowered
+            and "unchanged public contract 2.3.0" in lowered
         ),
         "peer runtime fingerprints": all(
             phrase in lowered

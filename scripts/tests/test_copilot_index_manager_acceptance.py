@@ -6,11 +6,22 @@ from scripts import copilot_index_manager_acceptance as acceptance
 
 VALID_TRACE = """Outcome: partial.
 Mode: review mode, the default mode. inventory and recheck are also supported.
-check_runtime_status returned runtime_fingerprint=process-1,
+check_runtime_status returned package_version=2.3.1, runtime_fingerprint=process-1,
 runtime_compatibility_fingerprint=compat-1, tool_schema_fingerprint=schema-1,
-sanitized_config_fingerprint=config-1. list_databases returned one Azure SQL
+sanitized_config_fingerprint=config-1. MCP package 2.3.1 or newer is required
+separately from the unchanged public contract 2.3.0. list_databases returned one Azure SQL
 Database; the user selected that returned database and it is in the configured
-allowlist. check_capabilities returned the public MCP contract version 2.3.0,
+allowlist.
+The MCP is operator-owned local stdio and configured for the currently signed-in
+Entra identity. It contains no fixed user principal name. It uses existing
+effective database permissions and does not create or require an additional
+database user or role. Review requires SELECT on both history tables. Capture
+requires SELECT and INSERT on both history tables. Broader effective permissions,
+including dbo, do not fail the contract probe. The restricted profile, database
+allowlist, and allow_index_history_write are application-layer controls; they do
+not reduce SQL permissions outside MCP. Per-caller Entra delegation for a shared
+remote service is out of scope.
+check_capabilities returned the public MCP contract version 2.3.0,
 mcp_contract.index_portfolio_review=1, exactly the three approved schemas:
 capture_index_review_snapshot(database_name, optional idempotency_key),
 review_index_portfolio(database_name, optional as_of_run_id, optional
@@ -28,7 +39,7 @@ The returned run was less than 48 hours old and was reused.
 review_index_portfolio(database_name=selected, as_of_run_id=run-index-1)
 returned review_id=review-index-1, as_of_run_id=run-index-1,
 overall_state=partial, evidence_id=None.
-recall_lessons(skill=sql-index-manager, skill_version=1.0.0,
+recall_lessons(skill=sql-index-manager, skill_version=1.0.1,
 runtime_compatibility_fingerprint=compat-1, tool_schema_fingerprint=schema-1,
 sanitized_config_fingerprint=config-1, database_name=selected) was unavailable
 because learning is remote-disabled; the advisory fallback is unchanged. Do not
@@ -151,6 +162,56 @@ class CopilotIndexManagerAcceptanceTests(unittest.TestCase):
                     "allowlist and contract gate",
                     acceptance.validate_response(VALID_TRACE.replace(field, "missing", 1)),
                 )
+
+    def test_mcp_package_gate_is_required(self) -> None:
+        bad = VALID_TRACE.replace(
+            "package_version=2.3.1",
+            "package_version=2.3.0",
+            1,
+        )
+
+        self.assertIn("MCP 2.3.1 package gate", acceptance.validate_response(bad))
+
+    def test_mcp_package_gate_accepts_newer_package_versions(self) -> None:
+        for version in ("2.3.2", "2.4.0", "3.0.0"):
+            with self.subTest(version=version):
+                trace = VALID_TRACE.replace("package_version=2.3.1", f"package_version={version}", 1)
+                self.assertEqual(acceptance.validate_response(trace), [])
+
+    def test_mcp_package_gate_is_bound_to_runtime_status(self) -> None:
+        bad = VALID_TRACE.replace(
+            "package_version=2.3.1",
+            "package_version=2.3.0",
+            1,
+        ) + "\nA later note mentions package_version=2.3.1."
+
+        self.assertIn("MCP 2.3.1 package gate", acceptance.validate_response(bad))
+
+    def test_current_user_entra_boundary_is_required(self) -> None:
+        bad = VALID_TRACE.replace(
+            "It contains no fixed user principal name.",
+            "It contains a configured identity.",
+            1,
+        )
+
+        self.assertIn(
+            "current-user Entra existing-permission boundary",
+            acceptance.validate_response(bad),
+        )
+
+    def test_current_user_entra_boundary_rejects_negated_claims(self) -> None:
+        bad = VALID_TRACE.replace(
+            "The MCP is operator-owned local stdio and configured for the currently signed-in\n"
+            "Entra identity.",
+            "The MCP is not operator-owned local stdio and is not configured for the currently signed-in\n"
+            "Entra identity.",
+            1,
+        )
+
+        self.assertIn(
+            "current-user Entra existing-permission boundary",
+            acceptance.validate_response(bad),
+        )
 
     def test_stale_reused_run_is_rejected(self) -> None:
         bad = VALID_TRACE.replace(
@@ -367,9 +428,9 @@ class CopilotIndexManagerAcceptanceTests(unittest.TestCase):
 
     def test_process_fingerprint_is_not_a_recall_argument(self) -> None:
         bad = VALID_TRACE.replace(
-            "recall_lessons(skill=sql-index-manager, skill_version=1.0.0,\n"
+            "recall_lessons(skill=sql-index-manager, skill_version=1.0.1,\n"
             "runtime_compatibility_fingerprint=compat-1,",
-            "recall_lessons(skill=sql-index-manager, skill_version=1.0.0,\n"
+            "recall_lessons(skill=sql-index-manager, skill_version=1.0.1,\n"
             "runtime_fingerprint=process-1, "
             "runtime_compatibility_fingerprint=compat-1,",
             1,

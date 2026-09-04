@@ -89,6 +89,17 @@ artifacts or learning evidence refs; V1 returns `evidence_id=None`. It uses
 exact recurring-request, overlap, protection, stable-epoch, no-gap, and human
 change-control gates; it never executes index DDL.
 
+Run index review through an operator-owned local stdio MCP process configured
+for the currently signed-in Entra identity. The server and skill contain no
+fixed user principal name. Per-caller Entra delegation for a shared remote MCP
+service is out of scope. The workflow uses existing effective database
+permissions and does not create or require an additional database user or role.
+Review requires `SELECT` on both history tables. Capture requires `SELECT` and
+`INSERT` on both. Broader effective permissions, including `dbo`, do not fail
+the contract probe. The restricted profile, database allowlist, and
+`allow_index_history_write` are application-layer controls; they do not reduce
+the signed-in identity's SQL permissions outside MCP.
+
 ## Local database policy
 
 - Do not apply a database change from an uncommitted checkout. Generate the preview or script, review it, and execute it from an approved change surface.
@@ -102,7 +113,8 @@ change-control gates; it never executes index DDL.
 - MCP restricted mode is the default. It validates and bounds read-only SQL, enforces the database allowlist, and hides admin tools. The separate index-review profile is restricted and permits only its one policy-gated append-only snapshot-history write.
 - Unrestricted mode exposes the administration surface but still requires the tool call, `dry_run`, write-policy, audit, and target-database gates.
 - Keep passwords, tokens, client secrets, connection strings, private endpoints, and SQL text containing sensitive literals out of Git and command history. `.env.example` files contain placeholders only.
-- A read-only client flag is not a SQL security boundary. Enforce least privilege in Azure SQL and use application guards as defense in depth.
+- A read-only client flag is not a SQL security boundary. Existing Azure SQL
+  permissions remain authoritative; use application guards as defence in depth.
 
 ## Verification
 

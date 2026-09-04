@@ -12,7 +12,7 @@ PUBLIC_NORMALIZED = " ".join(PUBLIC_README.casefold().split())
 
 def test_index_manager_is_self_contained_and_recommend_only() -> None:
     assert TEXT.startswith("---\nname: sql-index-manager\n")
-    assert 'metadata:\n  version: "1.0.0"' in TEXT
+    assert 'metadata:\n  version: "1.0.1"' in TEXT
     assert "recommend-only" in TEXT
     assert "never executes index DDL" in TEXT
     assert "one narrow,\nappend-only snapshot-history write" in TEXT
@@ -28,6 +28,7 @@ def test_modes_default_and_runtime_database_gates_are_ordered() -> None:
     assert "`review` (the default)" in TEXT
     ordered = (
         "check_runtime_status",
+        "mcp package version `2.3.1` or newer",
         "list_databases",
         "user-selected allowlisted",
         "check_capabilities",
@@ -58,6 +59,27 @@ def test_modes_default_and_runtime_database_gates_are_ordered() -> None:
         TEXT,
     )
     assert all("decision_id" not in call for call in calls)
+
+
+def test_current_operator_entra_identity_uses_existing_permissions() -> None:
+    for text in (TEXT, PUBLIC_README):
+        normalized = " ".join(text.casefold().split())
+        for phrase in (
+            "operator-owned local stdio",
+            "currently signed-in entra identity",
+            "no fixed user principal name",
+            "existing effective database permissions",
+            "review requires `select`",
+            "capture requires `select` and `insert`",
+            "does not create or require an additional database user or role",
+            "broader effective permissions",
+            "application-layer controls",
+        ):
+            assert phrase in normalized, (phrase, text is TEXT)
+    assert "per-caller entra delegation" in NORMALIZED
+    assert "shared remote" in NORMALIZED
+    assert "mcp package `2.3.1` or newer" in PUBLIC_NORMALIZED
+    assert "public mcp contract remains `2.3.0`" in PUBLIC_NORMALIZED
 
 
 def test_snapshot_age_and_controlled_capture_are_fail_closed() -> None:
@@ -285,7 +307,7 @@ def test_learning_identity_is_index_scoped_and_fails_closed() -> None:
     for phrase in (
         "registered subject `index`",
         "recall_lessons(skill=sql-index-manager",
-        "skill_version=1.0.0",
+        "skill_version=1.0.1",
         "do not pass the process",
         "remote-disabled",
         "recall-only",

@@ -98,8 +98,20 @@ Use an Azure CLI login or managed identity for `entra-default`. Keep server name
 For portfolio review, use a separate local stdio server entry with
 `AZURE_SQL_PROFILE=index-review`, `AZURE_SQL_TOOL_GROUPS=core,performance`,
 and `AZURE_SQL_ACCESS_MODE=restricted`.
-The public MCP contract remains `2.3.0`. The selected database must be returned
-by `list_databases` and the capability response must include
+Use an operator-owned local stdio process configured for the currently
+signed-in Entra identity through `entra-default` or `interactive`. The server
+and skill contain no fixed user principal name. Per-caller Entra delegation for
+a shared remote service is out of scope. The workflow uses existing effective
+database permissions and does not create or require an additional database
+user or role. Review requires `SELECT` on both history tables. Capture requires
+`SELECT` and `INSERT` on both. Broader effective permissions, including `dbo`,
+do not fail the contract probe. The restricted profile, database allowlist, and
+`allow_index_history_write` are application-layer controls; they do not reduce
+the signed-in identity's SQL permissions outside MCP.
+
+Index review requires MCP package `2.3.1` or newer. The public MCP contract
+remains `2.3.0`. The selected database must be returned by `list_databases` and
+the capability response must include
 `mcp_contract.index_portfolio_review=1`. The index-review surface is
 restricted, with only one narrow append-only snapshot-history write. The
 selected database policy must return `allow_read=true` for portfolio evidence;

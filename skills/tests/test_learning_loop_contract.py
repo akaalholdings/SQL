@@ -26,7 +26,7 @@ def test_exact_skill_versions_are_published() -> None:
         "sql-health-triage": 'metadata: version: "1.0.1"',
         "sql-optimizer": 'metadata: version: "2.3.1"',
         "sql-plan-enforcer": 'metadata: version: "1.0.1"',
-        "sql-index-manager": 'metadata: version: "1.0.0"',
+        "sql-index-manager": 'metadata: version: "1.0.1"',
     }
     for skill, phrase in expected.items():
         assert phrase in _compact(SKILLS[skill]), skill
@@ -160,7 +160,13 @@ def test_retired_index_portfolio_tool_names_are_absent() -> None:
     roots = (REPO_ROOT / "README.md", REPO_ROOT / "skills", REPO_ROOT / "scripts", REPO_ROOT / "docs")
     paths = [path for root in roots for path in ([root] if root.is_file() else root.rglob("*"))]
     for path in paths:
-        if not path.is_file() or "__pycache__" in path.parts or path.suffix == ".pyc":
+        relative_parts = path.relative_to(REPO_ROOT).parts
+        if (
+            not path.is_file()
+            or any(part.startswith(".") for part in relative_parts)
+            or "__pycache__" in path.parts
+            or path.suffix == ".pyc"
+        ):
             continue
         text = path.read_text(encoding="utf-8")
         for name in retired:
