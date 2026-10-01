@@ -33,7 +33,7 @@ Do not use the plan-enforcement skill for query rewrites or index changes. Do no
 - VS Code with GitHub Copilot Chat.
 - Python 3.12 or newer.
 - A local checkout of this repository.
-- A separate local checkout of `azure-sql-mcp` 2.4.0 or newer for measured
+- A separate local checkout of `azure-sql-mcp` 2.5.0 or newer for measured
   tuning, index review, multi-hour budgets, leased index tests, and durable
   view changes.
 - Azure SQL connection settings supplied locally, outside Git.

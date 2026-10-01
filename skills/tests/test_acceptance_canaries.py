@@ -23,7 +23,7 @@ tool_schema_fingerprint=schema-1, sanitized_config_fingerprint=config-1,
 database_name=selected) was unavailable because learning is remote-disabled;
 fallback to the existing static rewrite-first/read-only/review-only behavior is
 unchanged.
-recall_lessons(skill=sql-optimizer, skill_version=2.4.0,
+recall_lessons(skill=sql-optimizer, skill_version=2.5.0,
 runtime_compatibility_fingerprint=compat-1,
 tool_schema_fingerprint=schema-1, sanitized_config_fingerprint=config-1,
 database_name=selected) was unavailable because learning is remote-disabled;
@@ -49,7 +49,7 @@ skill_version=1.0.1, subject_kind=database,
 subject_fingerprint=subject-health-next,
 based_on_review_ids=[review-health-1], runtime_fingerprint=process-1,
 runtime_compatibility_fingerprint=compat-1) -> decision_id=decision-health-2.
-record_decision(skill=sql-optimizer, skill_version=2.4.0, subject_kind=query,
+record_decision(skill=sql-optimizer, skill_version=2.5.0, subject_kind=query,
 subject_fingerprint=subject-optimizer, based_on_review_ids=[],
 runtime_fingerprint=process-1,
 runtime_compatibility_fingerprint=compat-1) -> decision_id=decision-opt-1.
@@ -59,7 +59,7 @@ review_decision(decision_id=decision-opt-1,
 terminal_evidence_refs=[terminal-opt-1], OutcomeReviewV1=correction-opt,
 counterexamples=[counterexample-opt], next_observation=observe-opt); correction,
 counterexample, then next candidate.
-record_decision(skill=sql-optimizer, skill_version=2.4.0, subject_kind=query,
+record_decision(skill=sql-optimizer, skill_version=2.5.0, subject_kind=query,
 subject_fingerprint=subject-index,
 based_on_review_ids=[review-opt-1], runtime_fingerprint=process-1,
 runtime_compatibility_fingerprint=compat-1) -> decision_id=decision-opt-2.
@@ -68,7 +68,7 @@ decision_id=decision-opt-2) -> terminal_link_id=terminal-opt-2.
 review_decision(decision_id=decision-opt-2,
 terminal_evidence_refs=[terminal-opt-2], counterexamples=[],
 next_observation=observe-index, OutcomeReviewV1=correction-index).
-record_decision(skill=sql-optimizer, skill_version=2.4.0, subject_kind=query,
+record_decision(skill=sql-optimizer, skill_version=2.5.0, subject_kind=query,
 subject_fingerprint=subject-final,
 based_on_review_ids=[review-opt-2], runtime_fingerprint=process-1,
 runtime_compatibility_fingerprint=compat-1) -> decision_id=decision-opt-3.
@@ -157,9 +157,9 @@ def test_canaries_reject_recall_before_database_gate() -> None:
 
 def test_canaries_reject_process_fingerprint_in_recall() -> None:
     bad = LEARNING_TRACE.replace(
-        "recall_lessons(skill=sql-optimizer, skill_version=2.4.0,\n"
+        "recall_lessons(skill=sql-optimizer, skill_version=2.5.0,\n"
         "runtime_compatibility_fingerprint=compat-1,",
-        "recall_lessons(skill=sql-optimizer, skill_version=2.4.0,\n"
+        "recall_lessons(skill=sql-optimizer, skill_version=2.5.0,\n"
         "runtime_fingerprint=process-1, "
         "runtime_compatibility_fingerprint=compat-1,",
         1,

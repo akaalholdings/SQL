@@ -24,7 +24,7 @@ def _compact(path: pathlib.Path) -> str:
 def test_exact_skill_versions_are_published() -> None:
     expected = {
         "sql-health-triage": 'metadata: version: "1.0.1"',
-        "sql-optimizer": 'metadata: version: "2.4.0"',
+        "sql-optimizer": 'metadata: version: "2.5.0"',
         "sql-plan-enforcer": 'metadata: version: "1.0.1"',
         "sql-index-manager": 'metadata: version: "2.0.0"',
     }
