@@ -24,9 +24,9 @@ def _compact(path: pathlib.Path) -> str:
 def test_exact_skill_versions_are_published() -> None:
     expected = {
         "sql-health-triage": 'metadata: version: "1.0.1"',
-        "sql-optimizer": 'metadata: version: "2.3.1"',
+        "sql-optimizer": 'metadata: version: "2.4.0"',
         "sql-plan-enforcer": 'metadata: version: "1.0.1"',
-        "sql-index-manager": 'metadata: version: "1.0.1"',
+        "sql-index-manager": 'metadata: version: "2.0.0"',
     }
     for skill, phrase in expected.items():
         assert phrase in _compact(SKILLS[skill]), skill
@@ -105,40 +105,21 @@ def test_supported_decision_links_are_skill_specific() -> None:
     assert "decision_id" in health and "decision_id" in optimizer and "decision_id" in plan
 
     index = _compact(SKILLS["sql-index-manager"])
-    for tool in (
-        "capture_index_review_snapshot",
-        "review_index_portfolio",
-        "get_index_review",
-    ):
-        assert tool in index
-    assert "prior_review_id" in index
-    assert "registered subject `index`" in index
-    assert "evidence_id=none" in index
+    assert "review_workload_indexes" in index
+    assert "recall-only" in index
+    assert "no evidence id and no terminal link" in index
 
     for text in (health, optimizer, plan, index):
         assert "do not invent a decision_id" not in text
         assert "do not invent a decision_id parameter" not in text
 
 
-def test_index_portfolio_artifacts_are_exact_files_and_ids_are_tracking_only() -> None:
+def test_index_recommendation_ids_are_tracking_only() -> None:
     index = _compact(SKILLS["sql-index-manager"])
-    for filename in (
-        "index-review.json",
-        "index-review.md",
-        "create-candidates.sql",
-        "consolidation-candidates.sql",
-        "drop-candidates.sql",
-        "rollback.sql",
-        "validation.sql",
-    ):
-        assert filename in index
-    assert "snapshot_id" in index
-    assert "as_of_run_id" in index
-    assert "evidence_id=none" in index
-    assert "review_id" in index
-    assert "run_id" in index
-    assert "not learning evidence refs" in index
-    assert "never invent a non-null `evidence_id`" in index
+    assert (
+        "recommendation ids, review ids, and query ids are tracking references, "
+        "not learning evidence references"
+    ) in index
     assert "evidence_ref" not in index
     for invented in (
         "prior_state_ref",
@@ -203,14 +184,9 @@ def test_index_manager_is_recall_only_until_an_evidence_bridge_exists() -> None:
         "recall-only",
         "future public mcp contract",
         "index evidence bridge",
-        "evidence_id=none",
-        "no terminal link",
-        "not a learning evidence reference",
-        (
-            "no v1 initial result, later recheck, or explicit human resolution"
-            " becomes an `outcomereviewv1`"
-        ),
-        "recheck classification remains valid",
+        "no evidence id and no terminal link",
+        "not learning evidence references",
+        "never evidence",
         "without invoking learning or handoff tools",
     ):
         assert phrase in index, phrase

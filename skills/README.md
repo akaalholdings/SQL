@@ -4,7 +4,7 @@ This folder contains the four maintained Copilot skills:
 
 - `sql-health-triage`: read-only incident and health diagnosis.
 - `sql-optimizer`: iterative single-query rewriting, equivalence checking, benchmarking, and sandbox index experiments.
-- `sql-index-manager`: restricted index portfolio inventory, review, and recheck with one narrow append-only snapshot-history write, advisory lesson recall, and recommend-only human change-control routing.
+- `sql-index-manager`: workload-driven index review. It uses Query Store runtime history and stored plans to find the queries that hit each table, then recommends the best index set (create, extend, widen, consolidate, drop, cluster a heap) with supporting queries, confidence, inert DDL, and exact rollback. Recommend-only; proof goes through `sql-optimizer` and changes through human DBA change control.
 - `sql-plan-enforcer`: reviewed Query Store plan controls with verification and exact rollback.
 
 Each installed bundle contains one authoritative file: `SKILL.md`. Database execution, durable cases, tuning sessions, index leases, and plan-action intents belong to `azure-sql-mcp`.
@@ -22,7 +22,7 @@ comes only from the scoped local MCP learning store.
 | Diagnose broad slowness, blocking, waits, resource pressure, regressions, or an incident | `sql-health-triage` | `triage` |
 | Rewrite and tune one SELECT query without database writes | `sql-optimizer` | `optimizer` |
 | Test a temporary index in an approved non-production database | `sql-optimizer` | `sandbox` |
-| Review an Azure SQL Database index portfolio | `sql-index-manager` | `index-review` |
+| Review indexes against the workload and get index recommendations | `sql-index-manager` | `index-review` (or `triage`, `optimizer`) |
 | Review Query Store plan stability without changes | `sql-plan-enforcer` | `enforcer-review` |
 | Apply one explicitly authorized prepared plan action | `sql-plan-enforcer` | `enforcer-apply` |
 
@@ -33,8 +33,9 @@ Do not use the plan-enforcement skill for query rewrites or index changes. Do no
 - VS Code with GitHub Copilot Chat.
 - Python 3.12 or newer.
 - A local checkout of this repository.
-- A separate local checkout of `azure-sql-mcp` 2.1.0 or newer for measured
-  tuning, multi-hour budgets, leased index tests, and durable view changes.
+- A separate local checkout of `azure-sql-mcp` 2.4.0 or newer for measured
+  tuning, index review, multi-hour budgets, leased index tests, and durable
+  view changes.
 - Azure SQL connection settings supplied locally, outside Git.
 - For active benchmarks or writes, a local database policy file that explicitly permits the target database and operation.
 
@@ -95,36 +96,22 @@ Run `azure-sql-mcp` through local stdio from VS Code. Create `.vscode/mcp.json` 
 
 Use an Azure CLI login or managed identity for `entra-default`. Keep server names, database names, tenant information, usernames, passwords, tokens, and policy paths local. On first use, reload VS Code, enable the server in Copilot Chat, call `list_databases`, then call `check_capabilities`. Measured tuning requires `azure-sql-mcp` 2.1.0 or newer and `mcp_contract.performance_tuning=1`; restart-safe view work also requires `mcp_contract.durable_view_change=1`. Version 2.1.0 sizes the outer workflow timeout from the local per-request execution ceiling and the query timeout, then bounds it by the durable session deadline, so a policy-authorized multi-hour campaign is not cancelled by the old one-query wrapper. If either contract is missing, update `azure-sql-mcp` or stay in the optimizer's static, unmeasured mode. Select only a returned database that is in the configured allowlist.
 
-For portfolio review, use a separate local stdio server entry with
+For index review, use a local server entry with
 `AZURE_SQL_PROFILE=index-review`, `AZURE_SQL_TOOL_GROUPS=core,performance`,
-and `AZURE_SQL_ACCESS_MODE=restricted`.
-Use an operator-owned local stdio process configured for the currently
-signed-in Entra identity through `entra-default` or `interactive`. The server
-and skill contain no fixed user principal name. Per-caller Entra delegation for
-a shared remote service is out of scope. The workflow uses existing effective
-database permissions and does not create or require an additional database
-user or role. Review requires `SELECT` on both history tables. Capture requires
-`SELECT` and `INSERT` on both. Broader effective permissions, including `dbo`,
-do not fail the contract probe. The restricted profile, database allowlist, and
-`allow_index_history_write` are application-layer controls; they do not reduce
-the signed-in identity's SQL permissions outside MCP.
+`AZURE_SQL_ACCESS_MODE=restricted`, and `AZURE_SQL_WRITE_POLICY=disabled`.
+The `triage`, `optimizer`, and `sandbox` profiles expose the same advisor.
+Index review requires `azure-sql-mcp` 2.4.0 or newer and
+`mcp_contract.workload_index_advisor=1`. The advisor tool,
+`review_workload_indexes`, is read-only and needs only `VIEW DATABASE STATE`
+and `VIEW DEFINITION` for the MCP identity: no policy file, history tables, or
+install step. The database must be in `AZURE_SQL_ALLOWED_DATABASES`.
 
-Index review requires MCP package `2.3.1` or newer. The public MCP contract
-remains `2.3.0`. The selected database must be returned by `list_databases` and
-the capability response must include
-`mcp_contract.index_portfolio_review=1`. The index-review surface is
-restricted, with only one narrow append-only snapshot-history write. The
-selected database policy must return `allow_read=true` for portfolio evidence;
-`allow_index_history_write` defaults to `false`, so capture requires an
-explicit returned `allow_index_history_write=true` as well. Capture is a
-separate explicit tool step, and only after both policy gates are verified may
-the workflow call `capture_index_review_snapshot`; it then calls
-`review_index_portfolio` using the returned run. `idempotency_key` is optional:
-the MCP default may be used, and a supplied key must retain same-key no-retry
-safety. The fixed capability value `index_review_min_observation_days=90` is
-not a per-database policy key. A database policy may optionally return
-`business_cycle_extension_days`. The surface does not expose index DDL,
-arbitrary SQL, admin, benchmark, maintenance, or Database Watcher tools.
+Optional long-term removal evidence uses the portfolio tools
+(`capture_index_review_snapshot`, `review_index_portfolio`, `get_index_review`).
+They need the two `dbatools` index-history tables installed by a DBA, a
+database policy entry with `allow_read=true`, and `allow_index_history_write=true`
+for capture. Use them only to strengthen a removal decision across usage-counter
+resets over 90 days or more.
 
 For static rewrites, MCP and the policy file are optional. For measured rewrites, the selected policy entry must allow reads and benchmarks. For a disposable index or view test, change to a separate local server entry with `AZURE_SQL_PROFILE=sandbox`, `AZURE_SQL_TOOL_GROUPS=core,performance,admin`, local stdio, `AZURE_SQL_ACCESS_MODE=unrestricted`, `AZURE_SQL_WRITE_POLICY=apply`, and a non-production database policy. View apply also requires `AZURE_SQL_PERSIST_VIEW_SQL_STATE=true`; index testing does not. Never use that entry for production.
 
@@ -269,41 +256,33 @@ Use sql-plan-enforcer in review mode. Review Query Store regressions for the sel
 Do not prepare or apply anything.
 ```
 
-### Index portfolio review
+### Index review
 
 ```text
-Use sql-index-manager in the default review mode for the selected Azure SQL Database.
-Use only the approved capture_index_review_snapshot, review_index_portfolio, and
-get_index_review operations. Reuse returned complete evidence less than 48 hours
-old when available; otherwise verify returned `allow_read=true` and
-`allow_index_history_write=true` for the selected database, request the one
-controlled append-only capture as a separate explicit step, and then invoke
-review with its returned run. Return the deterministic per-index states,
-90-day-minimum stable-epoch/no-gap removal gates, exact overlap evidence,
-blockers, and human DBA owner routing. Do not execute index DDL.
+Use sql-index-manager on the selected Azure SQL Database. Review indexes
+against the last 14 days of Query Store workload, objective cpu. Show the top
+improvements, cleanup candidates with the removal checks, rewrite opportunities
+for sql-optimizer, and per-table detail. Do not execute any DDL.
 ```
 
-The index manager is recommend-only. It separates catalog, usage, Query Store,
-protection, ownership, and coverage evidence; it never treats a missing or
-`NULL` counter as zero. Portfolio changes remain human change control, and
-`sql-optimizer` remains responsible for one-query rewrite and sandbox tests.
-Its deterministic states keep a protected subject, a valid read delta, or any
-executed Query Store plan reference; create a candidate only for an exact
-recurring request across at least two runtime intervals with a material positive
-existing MCP score, complete Query Store coverage, no exact or covering index,
-and projected storage strictly below 90 percent; consolidate
-only an exact duplicate or strict coverage after full definition comparison;
-and consider removal only for an enabled user-created nonunique standalone
-type-2 rowstore that passes the full 90-day-plus-business-cycle, no-gap,
-stable-epoch, zero-read-delta, measured-cost, and complete coverage gates.
-The returned artifact filenames are exactly these seven: `index-review.json`,
-`index-review.md`, `create-candidates.sql`, `consolidation-candidates.sql`,
-`drop-candidates.sql`, `rollback.sql`, and `validation.sql`. Review,
-`as_of_run_id`, run, snapshot, and artifact identifiers are portfolio tracking
-fields, not learning evidence refs. V1 returns `evidence_id=None`, has no
-terminal link, uses only advisory `recall_lessons`, and does not write learning
-decisions, outcomes, candidates, or typed handoffs. A later recheck and an
-explicit human resolution remain portfolio or change-control facts only.
+The index manager is recommend-only. `review_workload_indexes` reads Query
+Store runtime totals and each top query's stored plan, finds how every query
+reaches each table (seek, scan, lookup, residual filters, sort needs), and
+designs indexes from those access patterns, existing definitions, usage
+counters, statistics selectivity, and write activity. It reconciles every
+candidate with existing indexes, so it extends or widens an index instead of
+adding a duplicate, and it flags exact duplicates, left-prefix redundancy,
+unused indexes (gated by usage-counter age, Query Store plan references, and
+capture mode), heaps, and unindexed foreign keys. Indexes that enforce
+uniqueness, back a constraint or foreign key, or support partition switching
+are never removal candidates. Each recommendation carries supporting query ids,
+an upper-bound benefit estimate, write cost, confidence, inert DDL, and exact
+rollback. Predicates no index can fix (functions on columns, implicit
+conversions) are reported for `sql-optimizer`. Proof of a candidate goes
+through `sql-optimizer` on a non-production copy (`benchmark_index_candidate`);
+production changes remain human DBA change control. Learning is advisory
+`recall_lessons` only: recommendation, review, and query ids are tracking
+references, not learning evidence.
 
 ### Prepared plan action
 
