@@ -9,7 +9,7 @@ TEXT = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 
 def test_optimizer_is_one_self_contained_workflow() -> None:
     assert TEXT.startswith("---\nname: sql-optimizer\n")
-    assert 'metadata:\n  version: "2.3.1"' in TEXT
+    assert 'metadata:\n  version: "2.4.0"' in TEXT
     assert "Required first response behavior" in TEXT
     assert "Missing plan lowers confidence" not in TEXT  # wording stays imperative, not a slogan
     assert "A missing plan lowers confidence" in TEXT
@@ -419,3 +419,32 @@ def test_optimizer_keeps_views_recommendation_only_and_does_not_claim_warmup() -
     assert "recommendation-only" in TEXT
     assert "canonical view benchmark" in TEXT
     assert "warmup" not in TEXT.casefold()
+
+
+def test_optimizer_reads_plan_findings_and_query_store_history_before_measuring() -> None:
+    normalized = " ".join(TEXT.split())
+    workflow = normalized.split("## Exact MCP workflow", 1)[1]
+    evidence = workflow.split("3. **Read plan and history evidence:**", 1)[1].split("4. **Open case:**", 1)[0]
+    for phrase in (
+        "`analyze_query_plan(query_id=...)`",
+        "`get_query_store_trend(query_id=...)`",
+        "`get_query_store_regressions`",
+        "`explain_query` returns the same `plan_findings`",
+        "predicates → Family 1",
+        "indexes → Family 5",
+        "treat it as a lead to measure, never as proof",
+        "no index can fix it",
+    ):
+        assert phrase in evidence
+    assert workflow.index("2. **Select database") < workflow.index("3. **Read plan and history evidence") < workflow.index("4. **Open case")
+
+
+def test_optimizer_designs_index_candidates_from_the_workload_advisor() -> None:
+    normalized = " ".join(TEXT.split())
+    for phrase in (
+        "Before registering an `index` or `rewrite_plus_index` candidate, call `review_workload_indexes(schema_name, table_names)`",
+        "extends or widens an index instead of duplicating one",
+        "Use its keys and includes for `benchmark_index_candidate`",
+        "route workload-wide index review",
+    ):
+        assert phrase in normalized
