@@ -171,7 +171,8 @@ When a DBA has installed the two `dbatools` index-history tables and enabled
 `allow_index_history_write` in the local database policy, the portfolio tools
 `capture_index_review_snapshot`, `review_index_portfolio`, and
 `get_index_review` keep daily usage snapshots across counter resets. Use them
-only to strengthen a removal decision over 90 days or more. They are not needed
+only to strengthen a removal decision over 35 days or more (longer for databases
+with quarter-end or year-end jobs). They are not needed
 for workload-driven design and require a database policy with `allow_read=true`.
 
 ## Advisory lesson recall
