@@ -178,6 +178,7 @@ Engine-owned recommendations, automatic last-good-plan actions, and unknown owne
 - Regression: restore exact prior state and verify.
 - Kill switch: stop new applies; continue read-only reconciliation and authorized safety rollback only as policy permits.
 - Every different action needs its own review and prepared intent.
+- Blocked (the same tool call fails the same way twice, a required precondition cannot be met, or this skill's text contradicts what a tool returns): call `report_stuck` once with `skill`, `skill_version` (this file's `metadata.version`), `last_tool`, a short blocker category, and a one-sentence summary that contains no SQL, data values, or object, server, or database names. If `report_stuck` is not in the tool list, skip it silently. Either way, stop retrying that exact call and tell the user what is blocked. A tool error whose `failure_diagnostic.transient` is true (for example 40613, 40501, 49918) follows normal retry guidance first.
 
 ## Required output
 

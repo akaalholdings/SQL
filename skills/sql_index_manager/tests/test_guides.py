@@ -136,3 +136,20 @@ def test_public_readme_describes_the_workload_driven_flow() -> None:
     ):
         assert phrase in PUBLIC_NORMALIZED
     assert "seven" not in PUBLIC_NORMALIZED.split("sql-index-manager", 1)[1].split("\n", 1)[0]
+
+
+def test_blocker_is_reported_once_then_the_call_is_not_retried() -> None:
+    # A blocked session leaves a redacted backlog entry instead of looping, but
+    # a failover or busy error must still get its normal retry first.
+    boundaries = NORMALIZED.split("## boundaries", 1)[1].split("## ", 1)[0]
+    for phrase in (
+        "the same tool call fails the same way twice",
+        "a required precondition cannot be met",
+        "this skill's text contradicts what a tool returns",
+        "call `report_stuck` once with `skill`, `skill_version` (this file's `metadata.version`), `last_tool`,",
+        "no sql, data values, or object, server, or database names",
+        "if `report_stuck` is not in the tool list, skip it silently",
+        "stop retrying that exact call and tell the user what is blocked",
+        "a tool error whose `failure_diagnostic.transient` is true (for example 40613, 40501, 49918) follows normal retry guidance first",
+    ):
+        assert phrase in boundaries
