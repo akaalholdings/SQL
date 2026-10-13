@@ -9,6 +9,7 @@ Public monorepo for Azure SQL assessment, migration, performance, and operations
 | [`azure-sql-mcp`](https://github.com/akaalholdings/azure-sql-mcp) | Bounded queries, schema metadata, diagnostics, Query Store evidence, and gated administration | Structured evidence, plans, diffs, and MCP artifacts |
 | [`skills/`](skills/) | `sql_health_triage`, `sql_optimizer`, `sql_plan_enforcer`, and `sql_index_manager` workflows | Triage findings, optimization packs, index portfolio reviews, and reviewed plan actions |
 | [`Assessment/`](Assessment/) | Read-only SQL Server inventory before migration | Sanitized inventory and target-fit evidence |
+| [`EstateInventory/`](EstateInventory/) | Read-only structure inventory of one Azure SQL Database, to compare environments | One flat result set per database |
 | [`AzureMigration/Assessment/`](AzureMigration/Assessment/) | On-premises SQL Server target assessment | Target recommendations, sizing bands, blockers, and remediation plans |
 | [`AzureMigration/CostSavings/`](AzureMigration/CostSavings/) | Azure SQL estate, usage, cost, and Advisor review | Cost findings and review-ready recommendations |
 | [`SchemaCompare/`](SchemaCompare/) | Schema comparison UI direction | Design handoff only |
@@ -22,6 +23,7 @@ Retired execution paths must remain absent. The repository integrity check fails
 | Need | Start here | Mutation boundary |
 | --- | --- | --- |
 | Inventory an on-premises SQL Server | [`Assessment/`](Assessment/) | Read-only collection |
+| Compare the structure of Azure SQL environments | [`EstateInventory/`](EstateInventory/) | Read-only catalog query |
 | Recommend Azure SQL Database, Managed Instance, or SQL VM | [`AzureMigration/Assessment/`](AzureMigration/Assessment/) | Local assessment only |
 | Review Azure SQL cost and utilization | [`AzureMigration/CostSavings/`](AzureMigration/CostSavings/) | Read-only Azure discovery and metrics |
 | Inspect Azure SQL schema, plans, waits, Query Store, or health | [`azure-sql-mcp`](https://github.com/akaalholdings/azure-sql-mcp) | Restricted MCP mode is read-only by default |
